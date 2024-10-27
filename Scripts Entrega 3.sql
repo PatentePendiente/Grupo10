@@ -4,7 +4,7 @@ Entrega Nro: 3 Creacion de Tablas
 Grupo 10 sqLite, Integrantes:
 -RAMATO, RODRIGO EXEQUIEL       -- 45129672	
 -MAMANI ESTRADA, LUCAS GABRIEL  --
--MOSCOSO RENDON, JUAN DIEGO     --
+-MOSCOSO RENDON, JUAN DIEGO     -- 95472958
 -VARELA, DANIEL MARIANO		   --
 */
 
@@ -95,6 +95,7 @@ BEGIN
             idProd INT PRIMARY KEY IDENTITY(1,1),
 --			idSuc TINYINT NOT NULL,
 			lineaDeProducto VARCHAR(30),
+			nombreProd NVARCHAR(256),
 			precioArs DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica 
 			precioUsd DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica
 			unidad SMALLINT not null,	 --Almacena en gramos o en cantidad
