@@ -94,7 +94,7 @@ BEGIN
     CREATE TABLE Prod.Producto (
             idProd INT PRIMARY KEY IDENTITY(1,1),
 --			idSuc TINYINT NOT NULL,
-			lineaDeProducto VARCHAR(30),
+			lineaDeProducto VARCHAR(64),
 			nombreProd NVARCHAR(256),
 			precioArs DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica 
 			precioUsd DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica
