@@ -75,7 +75,7 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[Sucursal]') AND type in (N'U'))
 BEGIN
     CREATE TABLE HR.Sucursal (
-			nroSucursal TINYINT PRIMARY KEY NOT NULL,
+			nroSucursal TINYINT IDENTITY(1, 1) PRIMARY KEY NOT NULL,
 			ciudad CHAR(15),
 			localidad VARCHAR(25)
     );
