@@ -66,10 +66,9 @@ GO
 
 
 --7) Importado de Ventas
---EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
---GO
--- DROP PROCEDURE ImportadorDeArchivos.importarCatalogo;
--- DROP PROCEDURE ImportadorDeArchivos.importarVentas;
+EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
+-- DROP PROCEDURE PROD.importarCatalogo;
+-- DROP PROCEDURE INV.importarVentas;
 
 
 

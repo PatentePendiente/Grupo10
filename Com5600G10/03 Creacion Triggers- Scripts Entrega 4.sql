@@ -8,9 +8,32 @@ Grupo 10 sqLite, Integrantes:
 -MOSCOSO RENDON, JUAN DIEGO     -- 95472958
 -VARELA, DANIEL MARIANO			-- 40388978
 
+FALTA:
+trigger delete emp
+trigger delete prod
+
 INDICE: 
+
+
+
 
 */
 
 USE Com5600G10
 GO
+
+
+select * from INV.DetalleVenta 
+select * from INV.Factura
+select * from PROD.Producto
+select * from HR.sucursal
+select * from HR.sucursal
+
+drop table INV.DetalleVenta
+drop table INV.Factura
+drop table HR.Empleado
+drop table HR.Sucursal
+drop table PROD.Producto
+
+select * from INV.DetalleVenta v
+INNER JOIN INV.Factura f ON f.idFactura = v.idFactura

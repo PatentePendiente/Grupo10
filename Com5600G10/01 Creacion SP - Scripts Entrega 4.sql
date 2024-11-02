@@ -104,8 +104,7 @@ BEGIN
         idProducto,
         nombreProducto,
         ROW_NUMBER() OVER (PARTITION BY nombreProducto ORDER BY (SELECT NULL)) AS RowNum
-    FROM 
-        #tablaImportada
+    FROM #tablaImportada
 	)
 	DELETE FROM Duplicados
 	WHERE RowNum > 1;
@@ -327,6 +326,8 @@ BEGIN
 		legajo VARCHAR(MAX),
 		nombre VARCHAR(MAX),
 		apellido VARCHAR(MAX),
+		--Tuve problemas para leer el documento del excel con un varchar, ya que excel maneja numeros grandes como el del
+		-- documento de 10.000.000 como numeros flotantes, use decimal y lo lei directamente para luego castearlo a entero
 		doc DECIMAL(15,2),
 		direccion VARCHAR(MAX),
 		emailPers VARCHAR(MAX),
@@ -450,27 +451,78 @@ BEGIN
 	SET producto = REPLACE(producto, 'Ã', 'Á')
 	WHERE producto LIKE '%Ã%';
 
+	
 	UPDATE #tablaImportada
-	SET producto = REPLACE(producto, 'Âº', 'º')
-	WHERE producto LIKE '%Âº%';
-	
-	select * from #tablaImportada t
+	SET producto = REPLACE(producto, 'Âº', 'º')
+	WHERE producto LIKE '%Âº%';
 
 
-	/*
-	INSERT INTO INV.Factura (idFactura, idProd, idSuc, idEmp, tipoFac, tipoCliente, genero, cantVendida, fecha, hora, regPago)
-	SELECT 
-		
-	FROM #tablaImportada;
-	*/
+
+
+	--Control de que el legajo del empleado que realizo la venta exista
+	DELETE FROM #tablaImportada
+	WHERE NOT EXISTS(
+		SELECT 1
+		FROM HR.Empleado e
+		WHERE e.legajo = #tablaImportada.empleado
+	)
+
+	--busqueda de id de sucursal 
+	ALTER TABLE #tablaImportada
+	ADD idSucursal INT;
+
+	UPDATE #tablaImportada
+	SET #tablaImportada.idSucursal = s.nroSucursal
+	FROM #tablaImportada
+	INNER JOIN HR.Sucursal s ON s.ciudad = #tablaImportada.ciudad;
 	
+	--creacion de Factura y control de mantener una factura unica:
+	INSERT INTO INV.Factura(idFactura, idEmp, tipoFac, tipoCliente, genero, fecha, hora, regPago)
+	SELECT CAST(tt.idFactura AS CHAR(11)),
+    CAST(tt.empleado AS INT),
+    CAST(tt.tipoFac AS CHAR(1)),
+    CAST(tt.tipoCliente AS CHAR(6)),
+    CAST(tt.genero AS CHAR(6)),
+    CAST(tt.fecha AS DATE),
+    CAST(tt.hora AS TIME),
+    CAST(tt.regPago AS VARCHAR(22))
+	FROM #tablaImportada tt
+	WHERE NOT EXISTS (
+    SELECT 1 
+    FROM INV.Factura f
+    WHERE f.idFactura = CAST(tt.idFactura AS CHAR(11))
+	);
+
+	--Registro de detalle de ventas asociadas al id de factura y al del producto:
+	--busqueda de id de producto 
+	ALTER TABLE #tablaImportada
+	ADD idProducto INT;
+	
+	UPDATE #tablaImportada
+	SET #tablaImportada.idProducto = p.idProd
+	FROM #tablaImportada
+	INNER JOIN PROD.Producto p ON p.nombreProd = #tablaImportada.producto;
+
+	--Registro de detalle de ventas y para evitar duplicados de detalles de ventas
+	INSERT INTO INV.DetalleVenta(idProducto, idFactura, subTotal, cant, precio)
+	SELECT tt.idProducto,
+    CAST(tt.idFactura AS CHAR(11)),
+	CAST(tt.precioUnitario AS DECIMAL(6,2)) * CAST(tt.cantidad AS INT) AS subTotal,
+    CAST(tt.cantidad AS INT),
+    CAST(tt.precioUnitario AS DECIMAL(6,2))
+	FROM #tablaImportada tt
+	WHERE 
+	idProducto is NOT NULL AND
+    NOT EXISTS (
+        SELECT 1 
+        FROM INV.DetalleVenta dv
+        WHERE dv.idFactura = CAST(tt.idFactura AS CHAR(11))
+          AND dv.idProducto = tt.idProducto 
+    );
+
 	DROP TABLE #tablaImportada;
 END;
 GO
-
---EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
--- DROP PROCEDURE PROD.importarCatalogo;
--- DROP PROCEDURE INV.importarVentas;
 
 
 
