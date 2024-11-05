@@ -573,8 +573,29 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE HR.mostrarEmpleados 
+AS
+BEGIN
+	-- Abrimos la clave simetrica para usarla para la desencriptacion 
+	OPEN SYMMETRIC KEY EmpleadosClaveSimetrica
+	DECRYPTION BY CERTIFICATE EmpleadosCert;
 
+	SELECT
+		legajo,
+		CONVERT(VARCHAR(60), DecryptByKey(nombre)) AS nombre,
+		CONVERT(VARCHAR(60), DecryptByKey(apellido)) AS apellido,
+		CONVERT(CHAR(8), DecryptByKey(dni)) AS dni,
+		CONVERT(VARCHAR(300), DecryptByKey(direccion)) AS direccion,
+		CONVERT(CHAR(20), DecryptByKey(cargo)) AS cargo,
+		CONVERT(CHAR(16), DecryptByKey(turno)) AS turno,
+		idSuc,
+		CONVERT(VARCHAR(70), DecryptByKey(mailPersonal)) AS mailPersonal,
+		CONVERT(VARCHAR(70), DecryptByKey(mailEmpresa)) AS mailEmpresa,
+		fechaBorrado
+	FROM HR.Empleado;
 
+	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
+END;
 
 
 
