@@ -159,6 +159,28 @@ GO
 --3) TABLA EMPLEADO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EMPLEADO]') AND type in (N'U'))
 BEGIN
+
+	-- MODIFICACION PARA LA ENTREGA 5
+	-- Debido a que la tabla Empleado va a almacenar datos encritados,
+	-- cambiamos los tipos de datos a VARBINARY para que continen datos sensibles
+	CREATE TABLE HR.Empleado (
+		legajo INT PRIMARY KEY, -- No encriptamos el legajo porque es una clave primaria
+		nombre VARBINARY(8000),  
+		apellido VARBINARY(8000),  
+		dni VARBINARY(8000),  
+		direccion VARBINARY(8000),  
+		cargo VARBINARY(8000),  
+		turno VARBINARY(8000),  
+		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave foránea
+		mailPersonal VARBINARY(8000),  
+		mailEmpresa VARBINARY(8000),  
+		fechaBorrado DATE NULL,
+
+    	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
+	);
+
+	-- Version anterior sin encriptacion:
+	/*
     CREATE TABLE HR.Empleado (
 			legajo INT PRIMARY KEY CLUSTERED NOT NULL,
 			nombre VARCHAR(60),
@@ -174,6 +196,7 @@ BEGIN
 			
 	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
     );
+	*/
 
     PRINT 'Tabla Empleado creada.';
 END
