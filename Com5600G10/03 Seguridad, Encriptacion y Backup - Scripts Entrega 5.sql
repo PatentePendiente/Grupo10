@@ -13,6 +13,7 @@ INDICE:
 2) Creacion de usuario y sede de permisos para el responsable de importar archivos
 3) Creacion del login para el supervisor
 4) Creacion del usuario para el supervisor
+5) Creacion del rol para el supervisor
 
 */
 
@@ -77,6 +78,14 @@ IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorUse
 BEGIN
     CREATE USER SupervisorUser FOR LOGIN SupervisorLogin;
     PRINT 'Usuario SupervisorUser creado.';
+END
+
+-- 5) Creacion del rol para el supervisor
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorRol')
+BEGIN
+    CREATE ROLE SupervisorRol;
+    ALTER ROLE SupervisorRol ADD MEMBER SupervisorUser;
+    PRINT 'Rol SupervisorRol creado.';
 END
 
 
