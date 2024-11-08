@@ -15,6 +15,7 @@ INDICE:
 4) Creacion del usuario para el supervisor
 5) Creacion del rol para el supervisor
 6) Creación de stored procedure para crear una nota de crédito
+7) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 
 */
 
@@ -131,6 +132,9 @@ BEGIN
     PRINT 'Nota de crédito creada exitosamente.';
 END
 
+
+-- 7) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
+GRANT EXECUTE ON INV.CrearNotaCredito TO SupervisorRol;
 
 
 
