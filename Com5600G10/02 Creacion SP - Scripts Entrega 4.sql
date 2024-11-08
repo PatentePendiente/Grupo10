@@ -4,7 +4,6 @@ Fecha: 1/11/2024
 Entrega Nro: 4 Insercion de Tablas
 Grupo 10 sqLite, Integrantes:
 -RAMATO, RODRIGO EXEQUIEL       -- 45129672	
--MAMANI ESTRADA, LUCAS GABRIEL  --
 -MOSCOSO RENDON, JUAN DIEGO     -- 95472958
 -VARELA, DANIEL MARIANO			-- 40388978
 
@@ -16,6 +15,7 @@ INDICE:
 5) Importado de Electronic accessories.xlsx
 6) Importado de Empleados
 7) Importado de Ventas
+8) Store Procedure para mostrar a los empleados desencriptados
 */
 
 USE Com5600G10
@@ -573,7 +573,8 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE HR.mostrarEmpleados 
+--8) Store Procedure para mostrar a los empleados desencriptados
+CREATE OR ALTER PROCEDURE DBA.mostrarEmpleados 
 AS
 BEGIN
 	-- Abrimos la clave simetrica para usarla para la desencriptacion 

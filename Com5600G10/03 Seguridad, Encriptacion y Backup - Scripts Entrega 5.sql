@@ -6,11 +6,13 @@ Grupo 10 sqLite, Integrantes:
 -RAMATO, RODRIGO EXEQUIEL       -- 45129672	
 -MOSCOSO RENDON, JUAN DIEGO     -- 95472958
 -VARELA, DANIEL MARIANO			-- 40388978
+
+
+INDICE: 
+1) Creacion de Certificados y Claves para Encriptación
+2) Creacion de usuario y sede de permisos para el responsable de importar archivos
+
 */
-
--- INDICE: 
--- 1) Creacion de Certificados y Claves para Encriptación
-
 
 -- Modulo de creacion de certificados y claves:
 -- 1) Certificados y Claves para Encriptación
@@ -31,7 +33,59 @@ BEGIN
 	WITH ALGORITHM = AES_256
 	ENCRYPTION BY CERTIFICATE EmpleadosCert;
 
-	PRINT 'Certificados y claves para encriptación creados.';
+	PRINT 'Certificados y claves para encriptación creados';
 END
 ELSE
-    PRINT 'La clave simétrica EmpleadosClaveSimetrica ya existe.';	
+    PRINT 'La clave simétrica EmpleadosClaveSimetrica ya existe';	
+GO
+
+--2) Creacion de usuario y sede de permisos para el responsable de importar archivos
+-- Verificar si el LOGIN ya existe
+IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioImportador')
+BEGIN
+    CREATE LOGIN UsuarioImportador WITH PASSWORD = 'importador123';
+	PRINT 'Se creo el Login UsuarioImportador';
+END
+ELSE
+    PRINT 'El Login UsuarioImportador ya existe';
+GO
+
+
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'UsuarioImportador')
+BEGIN
+    CREATE USER UsuarioImportador FOR LOGIN UsuarioImportador;
+END
+ELSE
+    PRINT 'El usuario UsuarioImportador ya existe en la base de datos.';
+GO
+
+--Conceder permisos para el uso de los sp de importacion de archivos
+GRANT EXECUTE ON SCHEMA::ImportadorDeArchivos TO UsuarioImportador;   
+GO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

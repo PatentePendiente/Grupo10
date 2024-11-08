@@ -15,14 +15,15 @@ Creacion de Schemas:
 3) PROD
 4) ImportadorDeArchivos
 5) Reportes
+6) DBA
 
 
 Creacion de Tablas:
 1) Tabla Sucursal
 2) Tabla Producto
 3) Tabla Empleado
-4) Tabla LineaProducto
-5) Tabla Factura
+4) Tabla Factura
+5) Tabla DetalleVenta
  
 agregar schema de exportadorDeArchivos para el trismestral y anual
 */
@@ -93,6 +94,16 @@ ELSE
     PRINT 'El esquema Reportes ya existe.';
 GO
 
+--6) Esquema DBA
+IF NOT EXISTS (
+    SELECT schema_name
+    FROM information_schema.schemata
+    WHERE schema_name = 'DBA'
+)
+	EXEC('CREATE SCHEMA DBA');
+ELSE
+    PRINT 'El esquema DBA ya existe.';
+GO
 
 -- modulo de creacion de tablas:
 --1) TABLA SUCURSAL
@@ -188,7 +199,7 @@ BEGIN
 			genero CHAR(6),
 			fecha DATE,
 			hora TIME,
-			regPago VARCHAR(22)
+			regPago VARCHAR(22) DEFAULT 'Pendiente de Pago'
 
 	CONSTRAINT fkEmp  FOREIGN KEY (idEmp)  REFERENCES HR.Empleado(legajo)
 	);
