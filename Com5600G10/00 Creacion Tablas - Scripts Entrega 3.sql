@@ -24,6 +24,7 @@ Creacion de Tablas:
 3) Tabla Empleado
 4) Tabla Factura
 5) Tabla DetalleVenta
+6) Tabla NotaCredito
  
 agregar schema de exportadorDeArchivos para el trismestral y anual
 */
@@ -230,6 +231,26 @@ ELSE
     PRINT 'La tabla DetalleVenta ya existe.';
 GO
 
+
+--6) TABLA NotaCredito
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[NotaCredito]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE INV.NotaCredito (
+        idNotaCredito INT PRIMARY KEY IDENTITY(1,1),
+        idFactura CHAR(11) NOT NULL,
+        idProducto INT NOT NULL,
+        tipoNotaCredito CHAR(1) NOT NULL, -- 'P': 'Producto' o 'V': 'Valor'
+        monto DECIMAL(10, 2) NOT NULL,
+        Fecha DATE DEFAULT GETDATE(),
+        CONSTRAINT fkNotaCredFact FOREIGN KEY (idFactura) REFERENCES INV.Factura(idFactura),
+        CONSTRAINT fkNotaCredProd FOREIGN KEY (idProducto) REFERENCES PROD.Producto(idProd)
+    );
+
+    PRINT 'Tabla NotaCredito creada.';
+END
+ELSE
+    PRINT 'La tabla NotaCredito ya existe.';
+GO
 
 
 --BORRADO DE TABLAS:
