@@ -14,6 +14,7 @@ INDICE:
 3) Creacion del login para el supervisor
 4) Creacion del usuario para el supervisor
 5) Creacion del rol para el supervisor
+6) Creación de stored procedure para crear una nota de crédito
 
 */
 
@@ -86,6 +87,48 @@ BEGIN
     CREATE ROLE SupervisorRol;
     ALTER ROLE SupervisorRol ADD MEMBER SupervisorUser;
     PRINT 'Rol SupervisorRol creado.';
+END
+
+
+-- 6) Creación de stored procedure para crear una nota de crédito
+CREATE OR ALTER PROCEDURE INV.CrearNotaCredito
+    @idFactura CHAR(11),
+    @nombreProducto VARCHAR(256),
+    @tipoNota CHAR(1) -- 'P': 'Producto' o 'V': 'Valor'
+AS
+BEGIN
+    -- Verificar si el usuario tiene el rol de Supervisor
+    IF IS_ROLEMEMBER('SupervisorRol') = 0
+    BEGIN
+        PRINT 'Solo los Supervisores pueden crear una nota de crédito.'
+        RETURN;
+    END
+
+    -- Verificar si la factura existe y si el producto es válido y pertenece a la factura
+    DECLARE @idProducto INT, @monto DECIMAL(6,2);
+
+    IF NOT EXISTS (SELECT 1 FROM INV.Factura WHERE idFactura = @idFactura AND regPago <> 'Pendiente de Pago')
+    BEGIN
+        PRINT 'La factura no existe o está pendiente de pago.'
+        RETURN;
+    END
+
+    SELECT @idProducto = p.idProd, @monto = p.precioArs
+    FROM PROD.Producto p
+    INNER JOIN INV.DetalleVenta dv ON dv.idProducto = p.idProd
+    WHERE dv.idFactura = @idFactura AND p.nombreProd = @nombreProducto;
+
+    IF @idProducto IS NULL
+    BEGIN
+        PRINT 'El producto no corresponde a la factura.'
+        RETURN;
+    END
+
+    -- Insertar la nota de crédito
+    INSERT INTO NotaCredito (idFactura, idProducto, tipoNotaCredito, monto)
+    VALUES (@idFactura, @idProducto, @tipoNota, @monto);
+
+    PRINT 'Nota de crédito creada exitosamente.';
 END
 
 
