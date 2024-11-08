@@ -22,10 +22,10 @@ Creacion de Tablas:
 1) Tabla Sucursal
 2) Tabla Producto
 3) Tabla Empleado
-4) Tabla Factura
-5) Tabla DetalleVenta
- 
-agregar schema de exportadorDeArchivos para el trismestral y anual
+**4) Tabla Cliente**
+5) Tabla Factura
+6) Tabla DetalleVenta
+7) Tabla NotaCredito
 */
 
 --Creacion de bd:
@@ -144,27 +144,8 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EMPLEADO]') AND type in (N'U'))
 BEGIN
 
-	-- MODIFICACION PARA LA ENTREGA 5
-	-- Debido a que la tabla Empleado va a almacenar datos encritados,
-	-- cambiamos los tipos de datos a VARBINARY para que continen datos sensibles
-	CREATE TABLE HR.Empleado (
-		legajo INT PRIMARY KEY, -- No encriptamos el legajo porque es una clave primaria
-		nombre VARBINARY(8000),  
-		apellido VARBINARY(8000),  
-		dni VARBINARY(8000),  
-		direccion VARBINARY(8000),  
-		cargo VARBINARY(8000),  
-		turno VARBINARY(8000),  
-		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave foránea
-		mailPersonal VARBINARY(8000),  
-		mailEmpresa VARBINARY(8000),  
-		fechaBorrado DATE NULL,
 
-    	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
-	);
 
-	-- Version anterior sin encriptacion:
-	/*
     CREATE TABLE HR.Empleado (
 			legajo INT PRIMARY KEY CLUSTERED NOT NULL,
 			nombre VARCHAR(60),
@@ -180,23 +161,39 @@ BEGIN
 			
 	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
     );
-	*/
+	
 
     PRINT 'Tabla Empleado creada.';
 END
 ELSE
     PRINT 'La tabla Empleado ya existe.';
 GO
-
---4) TABLA FACTURA
+/*
+--4) TABLA CLIENTE
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[Cliente]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE HR.Cliente (
+		idCliente INT IDENTITY(1,1) PRIMARY KEY,
+		tipoCliente CHAR(6),
+		genero CHAR(6), 
+	);
+    PRINT 'Tabla Cliente creada.';
+END
+ELSE
+    PRINT 'La tabla Cliente ya existe.';
+GO
+*/
+--5) TABLA FACTURA
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[Factura]') AND type in (N'U'))
 BEGIN
     CREATE TABLE INV.Factura (
-			idFactura CHAR(11) PRIMARY KEY,
+			nroFactura BIGINT PRIMARY KEY IDENTITY(1,1),
+			idFactura CHAR(11) NULL, --propios id de facturacion anterior que tendra null para los nuevos registros
 			idEmp INT NOT NULL,
-			tipoFac CHAR(1),
+		--	idCliente INT DEFAULT NULL,
 			tipoCliente CHAR(6),
-			genero CHAR(6),
+			genero CHAR(6), 
+			tipoFac CHAR(1),
 			fecha DATE,
 			hora TIME,
 			regPago VARCHAR(22) DEFAULT 'Pendiente de Pago'
@@ -210,18 +207,18 @@ ELSE
 GO
 
 
---5) TABLA DetalleVenta
+--6) TABLA DetalleVenta
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[DetalleVenta]') AND type in (N'U'))
 BEGIN
     CREATE TABLE INV.DetalleVenta (
 			idLineaProducto INT PRIMARY KEY IDENTITY(1,1),
 			idProducto	INT,
-			idFactura	CHAR(11),
+			idFactura	BIGINT,
 			subTotal	DECIMAL(9,2),
-			cant		SMALLINT NOT NULL,
+			cant		SMALLINT NOT NULL, --estandarizado a gr
 			precio		DECIMAL(6,2)
 
-	CONSTRAINT fkFactura FOREIGN KEY (idFactura) REFERENCES INV.Factura(idFactura),
+	CONSTRAINT fkFactura FOREIGN KEY (idFactura) REFERENCES INV.Factura(nroFactura),
 	CONSTRAINT fkProducto  FOREIGN KEY (idProducto)  REFERENCES PROD.Producto(idProd),
 	);
     PRINT 'Tabla DetalleVenta creada.';
@@ -231,14 +228,26 @@ ELSE
 GO
 
 
+--7) TABLA NotaCredito
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[NotaCredito]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE INV.NotaCredito (
+        idNotaCredito INT PRIMARY KEY IDENTITY(1,1),
+        idFactura BIGINT,
+        idProducto INT NOT NULL,
+        tipoNotaCredito CHAR(1) NOT NULL, -- 'P': 'Producto' o 'V': 'Valor'
+        monto DECIMAL(10, 2) NOT NULL,
+        Fecha DATE DEFAULT GETDATE(),
+        CONSTRAINT fkNotaCredFact FOREIGN KEY (idFactura) REFERENCES INV.Factura(nroFactura),
+        CONSTRAINT fkNotaCredProd FOREIGN KEY (idProducto) REFERENCES PROD.Producto(idProd)
+    );
 
---BORRADO DE TABLAS:
-/*
+    PRINT 'Tabla NotaCredito creada.';
+END
+ELSE
+    PRINT 'La tabla NotaCredito ya existe.';
+GO
 
-drop table hr.Sucursal
-
-drop table prod.Producto
-*/
 
 --VISTA DE TABLAS:
 /*
