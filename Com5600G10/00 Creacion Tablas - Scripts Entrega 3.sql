@@ -16,13 +16,14 @@ Creacion de Schemas:
 4) ImportadorDeArchivos
 5) Reportes
 6) DBA
+7) Cajero
 
 
 Creacion de Tablas:
 1) Tabla Sucursal
 2) Tabla Producto
 3) Tabla Empleado
-**4) Tabla Cliente**
+4) Tabla Cliente
 5) Tabla Factura
 6) Tabla DetalleVenta
 7) Tabla NotaCredito
@@ -105,6 +106,18 @@ ELSE
     PRINT 'El esquema DBA ya existe.';
 GO
 
+--7) Esquema Cajero
+IF NOT EXISTS (
+    SELECT schema_name
+    FROM information_schema.schemata
+    WHERE schema_name = 'Cajero'
+)
+	EXEC('CREATE SCHEMA Cajero');
+ELSE
+    PRINT 'El esquema Cajero ya existe.';
+GO
+
+
 -- modulo de creacion de tablas:
 --1) TABLA SUCURSAL
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[Sucursal]') AND type in (N'U'))
@@ -144,8 +157,6 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EMPLEADO]') AND type in (N'U'))
 BEGIN
 
-
-
     CREATE TABLE HR.Empleado (
 			legajo INT PRIMARY KEY CLUSTERED NOT NULL,
 			nombre VARCHAR(60),
@@ -168,8 +179,9 @@ END
 ELSE
     PRINT 'La tabla Empleado ya existe.';
 GO
-/*
+
 --4) TABLA CLIENTE
+--Vamos a tener 4 tipos de clientes Member Female / Member Male / Normal Female / Normal Male
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[Cliente]') AND type in (N'U'))
 BEGIN
     CREATE TABLE HR.Cliente (
@@ -182,17 +194,17 @@ END
 ELSE
     PRINT 'La tabla Cliente ya existe.';
 GO
-*/
+
 --5) TABLA FACTURA
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[Factura]') AND type in (N'U'))
 BEGIN
     CREATE TABLE INV.Factura (
-			nroFactura BIGINT PRIMARY KEY IDENTITY(1,1),
+			nroFactura INT PRIMARY KEY IDENTITY(1,1),
 			idFactura CHAR(11) NULL, --propios id de facturacion anterior que tendra null para los nuevos registros
 			idEmp INT NOT NULL,
-		--	idCliente INT DEFAULT NULL,
-			tipoCliente CHAR(6),
-			genero CHAR(6), 
+			idCliente INT DEFAULT NULL, --puede ser nulo para que no sea obligatorio asociar un cliente
+		--	tipoCliente CHAR(6),
+		--	genero CHAR(6), 
 			tipoFac CHAR(1),
 			fecha DATE,
 			hora TIME,
@@ -213,7 +225,7 @@ BEGIN
     CREATE TABLE INV.DetalleVenta (
 			idLineaProducto INT PRIMARY KEY IDENTITY(1,1),
 			idProducto	INT,
-			idFactura	BIGINT,
+			idFactura	INT,
 			subTotal	DECIMAL(9,2),
 			cant		SMALLINT NOT NULL, --estandarizado a gr
 			precio		DECIMAL(6,2)
@@ -233,7 +245,7 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[INV].[No
 BEGIN
     CREATE TABLE INV.NotaCredito (
         idNotaCredito INT PRIMARY KEY IDENTITY(1,1),
-        idFactura BIGINT,
+        idFactura INT,
         idProducto INT NOT NULL,
         tipoNotaCredito CHAR(1) NOT NULL, -- 'P': 'Producto' o 'V': 'Valor'
         monto DECIMAL(10, 2) NOT NULL,

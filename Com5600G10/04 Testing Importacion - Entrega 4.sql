@@ -69,6 +69,18 @@ GO
 -- DROP PROCEDURE PROD.importarCatalogo;
 -- DROP PROCEDURE INV.importarVentas;
 
+--Muestreo de tablas y como se cargaron los datos
+select * from HR.sucursal
+select * from HR.Empleado
+--La tabla cliente se cargo en 02 - ttesting de ABM ya que se utiliza tambien ahi
+select * from HR.Cliente
+select * from PROD.Producto
+select * from INV.Factura
+select * from INV.DetalleVenta
+
+
+
+
 
 
 

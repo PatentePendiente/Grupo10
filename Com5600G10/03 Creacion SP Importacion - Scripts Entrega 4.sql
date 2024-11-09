@@ -338,7 +338,7 @@ BEGIN
 		hora VARCHAR(MAX),
 		medioDePago VARCHAR(MAX),
 		empleado VARCHAR(MAX),
-		regPago VARCHAR(MAX)
+		regPago VARCHAR(MAX),
     );
 
 	-- Usamos SQL dinamico para utilizar BULK INSERT con una ruta variable
@@ -389,8 +389,6 @@ BEGIN
 	WHERE producto LIKE '%Âº%';
 
 
-
-
 	--Control de que el legajo del empleado que realizo la venta exista
 	DELETE FROM #tablaImportada
 	WHERE NOT EXISTS(
@@ -408,21 +406,27 @@ BEGIN
 	FROM #tablaImportada
 	INNER JOIN HR.Sucursal s ON s.ciudad = #tablaImportada.ciudad;
 	
-	--creacion de Factura y control de mantener una factura unica:
-	INSERT INTO INV.Factura(idFactura, idEmp, tipoFac, tipoCliente, genero, fecha, hora, regPago)
-	SELECT CAST(tt.idFactura AS CHAR(11)),
-    CAST(tt.empleado AS INT),
-    CAST(tt.tipoFac AS CHAR(1)),
-    CAST(tt.tipoCliente AS CHAR(6)),
-    CAST(tt.genero AS CHAR(6)),
-    CAST(tt.fecha AS DATE),
-    CAST(tt.hora AS TIME),
-    CAST(tt.regPago AS VARCHAR(22))
-	FROM #tablaImportada tt
+	--busqueda de id del tipo de cliente 
+	ALTER TABLE #tablaImportada
+	ADD idCliente INT;
+
+	-- Obtener el idCliente de la tabla HR.Cliente basado en tipoCliente y genero
+	UPDATE #tablaImportada
+	SET idCliente = c.idCliente
+	FROM #tablaImportada ti
+	INNER JOIN HR.Cliente c 
+    ON CAST(c.tipoCliente AS VARCHAR(6)) = CAST(ti.tipoCliente AS VARCHAR(6)) 
+    AND CAST(c.genero AS VARCHAR(6)) = CAST(ti.genero AS VARCHAR(6));
+	
+	INSERT INTO INV.Factura (idFactura, idEmp, idCliente, tipoFac, fecha, hora, regPago)
+	SELECT 
+	ti.idFactura, ti.empleado, ti.idCliente, ti.tipoFac, ti.fecha, ti.hora, 
+	CAST(ti.regPago AS VARCHAR(22))
+	FROM #tablaImportada ti
 	WHERE NOT EXISTS (
-    SELECT 1 
+    SELECT 1
     FROM INV.Factura f
-    WHERE f.idFactura = CAST(tt.idFactura AS CHAR(11))
+    WHERE f.idFactura = CAST(ti.idFactura AS CHAR(11))
 	);
 
 	--Registro de detalle de ventas asociadas al id de factura y al del producto:
@@ -435,26 +439,36 @@ BEGIN
 	FROM #tablaImportada
 	INNER JOIN PROD.Producto p ON p.nombreProd = #tablaImportada.producto;
 
+	--busco el id que genero nuestro sistema para la factura
+	ALTER TABLE #tablaImportada
+	ADD nroFacturacionSistema BIGINT;
+	
+	UPDATE #tablaImportada
+	SET #tablaImportada.nroFacturacionSistema = f.nroFactura
+	FROM #tablaImportada
+	INNER JOIN INV.Factura f ON f.idFactura = #tablaImportada.idFactura;
+
 	--Registro de detalle de ventas y para evitar duplicados de detalles de ventas
 	INSERT INTO INV.DetalleVenta(idProducto, idFactura, subTotal, cant, precio)
 	SELECT tt.idProducto,
-    CAST(tt.idFactura AS CHAR(11)),
+    nroFacturacionSistema,
 	CAST(tt.precioUnitario AS DECIMAL(6,2)) * CAST(tt.cantidad AS INT) AS subTotal,
     CAST(tt.cantidad AS INT),
     CAST(tt.precioUnitario AS DECIMAL(6,2))
 	FROM #tablaImportada tt
 	WHERE 
-	idProducto is NOT NULL AND
+	idProducto IS NOT NULL AND
     NOT EXISTS (
         SELECT 1 
         FROM INV.DetalleVenta dv
-        WHERE dv.idFactura = CAST(tt.idFactura AS CHAR(11))
+        WHERE dv.idFactura = nroFacturacionSistema
           AND dv.idProducto = tt.idProducto 
     );
-
+	
 	DROP TABLE #tablaImportada;
 END;
 GO
+
 
 /*
 --8) Store Procedure para mostrar a los empleados desencriptados
@@ -481,6 +495,7 @@ BEGIN
 
 	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
 END;
+
 
 */
 

@@ -9,12 +9,14 @@ Grupo 10 sqLite, Integrantes:
 
 
 INDICE: 
-1) SP para api de dolar
-2) Trigger para el borrado logico de productos
-3) Trigger para el borrado logico de empleados
-4) SP para insertar productos de manera individual
-5) SP para registrar una factura 
-6) SP para registrar Detalle de Venta
+1) SP intermedio para api de dolar y conseguir valores de dolar
+2) SP intermedio para registrar los 4 tipos de clientes del sistema
+3) SP para el borrado logico de productos
+4) SP para el borrado logico de empleados
+5) SP para insertar productos de manera individual, sin duplicados y que actualiza en caso de coincidencia
+
+
+
 
 */
 
@@ -26,14 +28,6 @@ GO
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.consultarDolarAPI
 AS
 BEGIN
-	-- Para ejecutar un llamado a una API desde SQL primero vamos a tener que 
-	-- habilitar ciertos permisos que por default vienen bloqueados (Ole Auomation Procedures).
-	EXEC sp_configure 'show advanced options', 1; --borrar 
-	RECONFIGURE;
-	EXEC sp_configure 'Ole Automation Procedures', 1;
-	RECONFIGURE;
-
-	-- Declarar variables
 	DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
 	DECLARE @Object INT;
 	DECLARE @json TABLE(respuesta VARCHAR(MAX));
@@ -73,7 +67,38 @@ BEGIN
 END;
 GO
 
---2) SP para el borrado logico de producto
+--2) SP para registrar los 4 tipos de clientes
+CREATE OR ALTER PROCEDURE DBA.InsertarClientes
+AS
+BEGIN
+    -- Verificar si no existen los tipos de cliente
+    IF NOT EXISTS (SELECT 1 FROM HR.Cliente WHERE tipoCliente = 'Member' AND genero = 'Female')
+    BEGIN
+        INSERT INTO HR.Cliente (tipoCliente, genero)
+        VALUES ('Member', 'Female');
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM HR.Cliente WHERE tipoCliente = 'Member' AND genero = 'Male')
+    BEGIN
+        INSERT INTO HR.Cliente (tipoCliente, genero)
+        VALUES ('Member', 'Male');
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM HR.Cliente WHERE tipoCliente = 'Normal' AND genero = 'Female')
+    BEGIN
+        INSERT INTO HR.Cliente (tipoCliente, genero)
+        VALUES ('Normal', 'Female');
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM HR.Cliente WHERE tipoCliente = 'Normal' AND genero = 'Male')
+    BEGIN
+        INSERT INTO HR.Cliente (tipoCliente, genero)
+        VALUES ('Normal', 'Male');
+    END
+END;
+GO
+
+--3) SP para el borrado logico de producto
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarProducto
     @nombreProd NVARCHAR(256)
 AS
@@ -92,8 +117,8 @@ BEGIN
 END;
 GO
 
---3) SP para el borrado logico de empleado
-CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarEmpleadoLogico
+--4) SP para el borrado logico de empleado
+CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarEmpleado
     @legajo INT
 AS
 BEGIN
@@ -113,8 +138,7 @@ BEGIN
 END;
 GO
 
-
---4) SP para insertar productos de manera individual
+--5) SP para insertar productos de manera individual
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.InsertarProducto
     @lineaDeProducto VARCHAR(64),
     @nombreProd NVARCHAR(256),
@@ -162,179 +186,131 @@ BEGIN
 END;
 GO
 
---5) SP para registrar una factura 
-CREATE OR ALTER PROCEDURE ImportadorDeArchivos.InsertarFactura
-    @legajoEmp INT,                      -- Recibe el legajo del empleado
-    @tipoFac CHAR(1),
-    @tipoCliente CHAR(6),
-    @genero CHAR(6),
-    @fecha DATE = NULL,                  -- Algunos campos son nulos para que no sea obligatorio indicarlos
-    @hora TIME = NULL,                   -- cuando se ejecute el sp
-    @regPago VARCHAR(22) = 'Pendiente de Pago'
+
+
+-----------------------------------------------------------------------
+--				      REGISTRACION DE VENTAS				      	 --
+-----------------------------------------------------------------------
+--1)
+CREATE OR ALTER PROCEDURE Cajero.AgregarDetalleVenta
+    @nombreProducto NVARCHAR(256), -- Nombre del producto
+    @cantidadEnGr SMALLINT, -- Cantidad en gramos
+    @legajoCajero INT -- Legajo del cajero (empleado)
 AS
 BEGIN
-    DECLARE @idEmp INT;
+	DECLARE @idProd INT;
+    DECLARE @nroFactura INT;
+    DECLARE @idFactura CHAR(11);
+    DECLARE @precio DECIMAL(6,2);
+    DECLARE @precioFinal DECIMAL(6,2);
+    DECLARE @unidadRef VARCHAR(64);
+    DECLARE @tipoCambio DECIMAL(6,4); 
+    DECLARE @precioEnLocal DECIMAL(6,2); -- Precio en moneda local (ARS)
+    DECLARE @respuesta VARCHAR(MAX);
+    DECLARE @precioUsd DECIMAL(6,2); -- Precio en USD
+    DECLARE @precioArs DECIMAL(6,2); -- Precio en ARS
+    DECLARE @json TABLE(respuesta VARCHAR(MAX)); -- Tabla temporal para almacenar respuesta de la API
+    DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
+    DECLARE @Object INT;
 
-	/*
-    -- Verificar si la factura ya existe
-    IF EXISTS (
-        SELECT 1 
-        FROM INV.Factura
-        WHERE idFactura = @idFactura
-    )
+    -- Paso 1: Buscar si ya existe una factura pendiente de confirmacion
+    SELECT @nroFactura = nroFactura 
+    FROM INV.Factura
+    WHERE idEmp = @legajoCajero AND regPago = 'Pendiente de Confirmacion'
+
+
+    -- Si no se encuentra una factura pendiente, crear una nueva factura
+    IF @nroFactura IS NULL
     BEGIN
-        PRINT 'La factura ya existe en el sistema.';
-        RETURN;
-    END*/
+        -- Crear una nueva factura
+        INSERT INTO INV.Factura (idEmp, fecha, hora, regPago, tipoFac)
+        VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'Pendiente de Pago', 'A'); -- Suponiendo tipoFac = 'A' para venta
+        SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura recién creado
+    END
 
-    -- Obtener el ID del empleado a partir del legajo para ver si existe
-    SELECT @idEmp = legajo
-    FROM HR.Empleado
-    WHERE legajo = @legajoEmp;
+    -- Paso 2: Buscar el precio del producto por nombre
+    SELECT @precioUsd = precioUsd,
+           @precioArs = precioArs,
+           @unidadRef = unidadRef,
+		   @idProd = idProd
+    FROM Prod.Producto
+    WHERE nombreProd = @nombreProducto;
 
-    -- Verificar si el empleado esta registrado
-    IF @idEmp IS NULL
+    -- Verificar si el producto existe y tiene un precio
+    IF @idProd IS NULL
     BEGIN
-        PRINT 'El legajo del empleado no se encuentra registrado.';
+        PRINT 'Producto no registrado.';
         RETURN;
     END
 
-    -- Insertar la nueva factura
-    INSERT INTO INV.Factura (idFactura, idEmp, tipoFac, tipoCliente, genero, fecha, hora, regPago)
-    VALUES (@idFactura, @idEmp, @tipoFac, @tipoCliente, @genero, @fecha, @hora, @regPago);
+	/******************
+	--paso 3 consultar la api para conseguir el precio de dolar
+	**************************/
 
-    PRINT 'Factura insertada correctamente.';
-END;
+
+	/***************************/
+	print 'hasta aca todo bien'
+	select * from INV.Factura
+	where regPago = 'Pendiente de Pago'
+
+	DECLARE @mensaje varchar(MAX)
+	SET @mensaje = 'Precio USD: ' + CAST(@precioUsd AS VARCHAR(6)) + ', '
+              + 'Precio ARS: ' + CAST(@precioArs AS VARCHAR(6)) + ', '
+              + 'Unidad de Referencia: ' + ISNULL(@unidadRef, 'No disponible')
+			  + '   IdProd:' + CAST(@idProd AS varchar(6));
+
+	-- Mostrar el mensaje en el print
+	PRINT @mensaje;
+
+    --X controlar de kg a gr
+	/****************************/
+
+
+	/*
+    -- Paso 4: Determinar el precio final en base a la moneda
+    IF @precioUsd > 0 -- Si el precio está en USD
+    BEGIN
+        -- Convertir el precio de USD a la moneda local (ARS)
+        SET @precioEnLocal = @precioUsd * @tipoCambio;
+    END
+    ELSE -- Si el precio está en ARS
+    BEGIN
+        SET @precioEnLocal = @precioArs;
+    END
+
+    -- Paso 5: Insertar el detalle de venta con el precio en pesos (ARS) y cantidad en gramos
+    INSERT INTO INV.DetalleVenta (idProducto, idFactura, subTotal, cant, precio)
+    SELECT p.idProd, @nroFactura, @cantidadEnGr * @precioEnLocal, @cantidadEnGr, @precioEnLocal
+    FROM Prod.Producto p
+    WHERE p.nombreProd = @nombreProducto;
+
+    -- Paso 6: Mostrar resultados
+    SELECT 
+        @nombreProducto AS Producto,
+        @nroFactura AS NroFactura,
+        @cantidadEnGr * @precioEnLocal AS SubTotal, 
+        @cantidadEnGr AS Cantidad, 
+        @precioEnLocal AS Precio,
+        @tipoCambio AS TipoCambio,
+        @respuesta AS rta;
+		*/
+
+
+		--para ir eliminando duplicados:
+		delete from INV.Factura
+		where regPago = 'Pendiente de Pago'
+END
 GO
 
 
---6) SP para registrar un Detalle de Venta 
-CREATE OR ALTER PROCEDURE ImportadorDeArchivos.InsertarLineaDeVenta
-    @nombreProd NVARCHAR(256),  -- Recibe el nombre del producto
-    @idFactura CHAR(11), --factura vinculada
-    @cant SMALLINT --cantidad vendida
-AS
-BEGIN
-    DECLARE @idProducto INT;
-    DECLARE @precio DECIMAL(6,2);
-    DECLARE @precioEnArs DECIMAL(6,2);
-    DECLARE @subTotal DECIMAL(9,2);
-    DECLARE @tipoPrecio VARCHAR(3);
-    DECLARE @cotizacionVenta DECIMAL(6,2);
-
-    -- Obtener el idProducto desde el nombre del producto
-    SELECT @idProducto = idProd
-    FROM Prod.Producto
-    WHERE nombreProd = @nombreProd;
-
-    -- Verificar si el producto existe
-    IF @idProducto IS NULL
-    BEGIN
-        PRINT 'El producto no se encuentra registrado.';
-        RETURN;
-    END
-
-    -- Verificación de que no se dupliquen detalles de ventas para un mismo producto de una misma factura:
-    IF EXISTS (
-        SELECT 1 
-        FROM INV.DetalleVenta
-        WHERE idProducto = @idProducto AND idFactura = @idFactura
-    )
-    BEGIN
-        PRINT 'Este producto ya ha sido agregado para esta factura.';
-        RETURN;
-    END
-	/*
-    -- Obtener el precio y el tipo de moneda del producto
-    SELECT @precio = 
-                CASE
-                    WHEN precioArs IS NOT NULL THEN precioArs 
-                    ELSE 
-						CASE 
-                            WHEN precioUsd IS NOT NULL THEN precioUsd 
-                            ELSE 0
-                        END
-                END,
-           @tipoPrecio = 
-                CASE
-                    WHEN precioArs IS NOT NULL AND precioArs > 0 THEN 'ARS' 
-                    ELSE 'USD' 
-                END
-    FROM Prod.Producto
-    WHERE idProd = @idProducto;*/
-
-    -- Si el precio está en USD, obtener la cotización actual para la conversión
-    IF @tipoPrecio = 'USD' AND @precio > 0
-    BEGIN
-        -- Consultar la API para obtener la cotización de USD a ARS
-        DECLARE @json TABLE (moneda VARCHAR(3), casa VARCHAR(16), nombre VARCHAR(16), 
-		compra DECIMAL(6,2), venta DECIMAL(6,2), fechaActualizacion DATETIME2);
-        
-        -- Llamar la API y cargar la respuesta en la tabla temporal @json
-        INSERT INTO @json
-        EXEC ImportadorDeArchivos.consultarDolarAPI;
-
-        -- Seleccionar la cotización de venta que es la oficial (se podria haber seleccionado la 2da que es el dolar blue)
-        SELECT TOP 1 @cotizacionVenta = venta 
-        FROM @json;
-
-        -- Convertir el precio de USD a ARS si la cotización es válida
-        IF @cotizacionVenta > 0
-        BEGIN
-            SET @precioEnArs = @precio * @cotizacionVenta;
-        END
-        ELSE
-        BEGIN
-            PRINT 'Error al obtener la cotización de USD a ARS.';
-            RETURN;
-        END
-    END
-    ELSE
-    BEGIN
-        SET @precioEnArs = @precio;
-    END
-    
-    -- Validación para evitar que el subtotal sea 0
-    IF @precioEnArs <= 0
-    BEGIN
-        PRINT 'El precio del producto es 0 o no válido.';
-        RETURN;
-    END
-
-    -- Calcular el subtotal
-    SET @subTotal = @precioEnArs * @cant;
-
-    -- Validar que el subtotal no sea 0
-    IF @subTotal <= 0
-    BEGIN
-        PRINT 'El subtotal calculado es 0 o no válido.';
-        RETURN;
-    END
-
-    -- Insertar el detalle de la venta
-    INSERT INTO INV.DetalleVenta
-    (
-        idProducto,
-        idFactura,
-        subTotal,
-        cant,
-        precio
-    )
-    VALUES 
-    (
-        @idProducto,
-        @idFactura,
-        @subTotal,
-        @cant,
-        @precioEnArs
-    );
-
-    PRINT 'Detalle de venta registrado correctamente.';
-END;
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = '34in Ultrawide Monitor', 
+    @cantidadEnGr = 1,
+    @legajoCajero = 257020;
 
 
 
+-- 2. Procedimiento para confirmar la compra
 
 
-
-
+-- 3. Procedimiento para cancelar la compra
