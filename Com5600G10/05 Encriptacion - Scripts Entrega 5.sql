@@ -11,45 +11,44 @@ Grupo 10 sqLite, Integrantes:
 INDICE: 
 
 
+
 */
 
 
-
-
-
-
-
--- MODIFICACION PARA LA ENTREGA 5
--- Debido a que la tabla Empleado va a almacenar datos encritados,
--- cambiamos los tipos de datos a VARBINARY para que continen datos sensibles
-/*
-	CREATE TABLE HR.Empleado (
+-- Debido a los datos privados de los empleados deben estar encritados,
+-- creamos una nueva tabla que va a almacenar los datos encriptados de los empledos
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EmpleadoEncriptado]') AND type in (N'U'))
+BEGIN
+	CREATE TABLE HR.EmpleadoEncriptado(
 		legajo INT PRIMARY KEY, -- No encriptamos el legajo porque es una clave primaria
 		nombre VARBINARY(8000),  
 		apellido VARBINARY(8000),  
 		dni VARBINARY(8000),  
 		direccion VARBINARY(8000),  
-		cargo VARBINARY(8000),  
-		turno VARBINARY(8000),  --No deberia estar encriptado porej
-		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave foránea
+		cargo CHAR(20),
+		turno CHAR(16), --tt,tm,tn,jornada completa
+		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave forï¿½nea
 		mailPersonal VARBINARY(8000),  
 		mailEmpresa VARBINARY(8000),  
 		fechaBorrado DATE NULL,
 
     	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
 	);
-	*/
+END
+ELSE
+	PRINT 'La tabla EmpleadoEncriptado ya existe.';
+
 
 
 	/*
 
 	-- MODIFICACION PARA LA ENTREGA 5
 	-- Se nos pide encriptar la tabla de empleados porque contiene informacion privada.
-	-- Debido a que la version de SQL SERVER que utilizamos para diseñar la base de datos (SQL SERVER EXPRESS)
-	-- no admite la encriptación por tabla, tenemos que hacerla por columnas.
+	-- Debido a que la version de SQL SERVER que utilizamos para diseï¿½ar la base de datos (SQL SERVER EXPRESS)
+	-- no admite la encriptaciï¿½n por tabla, tenemos que hacerla por columnas.
 	-- Debemos encriptar cada valor antes de insertarlo en la tabla Empleado.
 
-	-- Abrimos la clave simetrica para usarla para la encriptación 
+	-- Abrimos la clave simetrica para usarla para la encriptaciï¿½n 
 	OPEN SYMMETRIC KEY EmpleadosClaveSimetrica
 	DECRYPTION BY CERTIFICATE EmpleadosCert;
 
@@ -89,9 +88,6 @@ INDICE:
 	-- Cerramos la clave simetrica
 	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
 	
-
-
-	*/
 
 
 
