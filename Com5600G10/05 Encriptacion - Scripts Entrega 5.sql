@@ -64,6 +64,80 @@ END
 ELSE
 	PRINT 'La tabla EmpleadoEncriptado ya existe.';
 
+-- 3) Creacion de un stored procedure para importar los datos de empleados encriptados
+CREATE OR ALTER PROCEDURE ImportadorDeArchivos.ImportarEmpleadosEncriptados
+AS
+BEGIN
+	-- Creamos una tabla temporal para almacenar los datos importados
+	--Legajo/ID	Nombre	Apellido	DNI  direccion email personal	email empresa	CUIL	Cargo	Sucursal	Turno
+	CREATE TABLE #tablaImportada (
+		legajo VARCHAR(MAX),
+		nombre VARCHAR(MAX),
+		apellido VARCHAR(MAX),
+		--Tuve problemas para leer el documento del excel con un varchar, ya que excel maneja numeros grandes como el del
+		-- documento de 10.000.000 como numeros flotantes, use decimal y lo lei directamente para luego castearlo a entero
+		doc DECIMAL(15,2),
+		direccion VARCHAR(MAX),
+		emailPers VARCHAR(MAX),
+		emailEmp VARCHAR(MAX),
+		cuil VARCHAR(MAX),
+		cargo VARCHAR(MAX),
+		surcursal VARCHAR(MAX),
+		turno VARCHAR(MAX)
+	);
+
+	-- Leemos los datos del archivo Excel
+	DECLARE @sql NVARCHAR(MAX);
+    SET @sql = 'INSERT INTO #tablaImportada SELECT * FROM OPENROWSET(''Microsoft.ACE.OLEDB.12.0'', ''Excel 12.0;Database=' + @ruta + ';HDR=YES'', ''SELECT * FROM [Empleados$]'');';
+    EXEC sp_executesql @sql;
+
+	--Eliminamos filas que se leen nulas
+	delete from #tablaImportada 
+	where legajo is null
+
+	-- Abrimos la clave simetrica para usarla para la encriptaci�n 
+	OPEN SYMMETRIC KEY EmpleadosClaveSimetrica
+	DECRYPTION BY CERTIFICATE EmpleadosCert;
+
+	-- Insertamos los datos encriptado en la tabla
+	MERGE INTO HR.Empleado AS TARGET
+	USING (
+	 SELECT 
+		CAST(t.legajo AS INT) AS legajo, -- No encriptamos el legajo ya que es la clave primaria de la tabla
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.nombre) AS nombre, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.apellido) AS apellido, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), CAST(CAST(t.doc AS INT) AS CHAR(8))) AS dni, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.direccion) AS direccion, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.cargo) AS cargo, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.turno) AS turno, 
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.emailPers) AS emailPers,
+		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.emailEmp) AS emailEmp, 
+		S.nroSucursal AS nroSucursal -- No encriptamos el nro de sucursal ya que es clave foranea
+	FROM #tablaImportada t
+	INNER JOIN HR.Sucursal s on t.surcursal = s.localidad
+	) AS SOURCE
+	ON TARGET.legajo = SOURCE.legajo
+	WHEN MATCHED THEN 
+	  UPDATE SET 
+        TARGET.nombre = SOURCE.nombre,
+        TARGET.apellido = SOURCE.apellido,
+        TARGET.dni = SOURCE.dni,
+        TARGET.direccion = SOURCE.direccion,
+        TARGET.cargo = SOURCE.cargo,
+        TARGET.turno = SOURCE.turno,
+        TARGET.mailPersonal = SOURCE.emailPers,
+        TARGET.mailEmpresa = SOURCE.emailEmp,
+        TARGET.idSuc = SOURCE.nroSucursal
+	WHEN NOT MATCHED THEN 
+    INSERT (legajo, nombre, apellido, dni, direccion, cargo, turno, mailPersonal, mailEmpresa, idSuc)
+    VALUES (SOURCE.legajo, SOURCE.nombre, SOURCE.apellido, SOURCE.dni, SOURCE.direccion, SOURCE.cargo, SOURCE.turno, SOURCE.emailPers, SOURCE.emailEmp, SOURCE.nroSucursal);
+
+	-- Cerramos la clave simetrica
+	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
+END
+	
+
+
 
 
 
