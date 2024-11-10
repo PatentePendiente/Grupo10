@@ -40,6 +40,31 @@ ELSE
     PRINT 'La clave simétrica EmpleadosClaveSimetrica ya existe';	
 GO
 
+-- 2) Creacion de la tabla EmpleadoEncriptado
+-- Debido a los datos privados de los empleados deben estar encritados,
+-- creamos una nueva tabla que va a almacenar los datos encriptados de los empledos
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EmpleadoEncriptado]') AND type in (N'U'))
+BEGIN
+	CREATE TABLE HR.EmpleadoEncriptado(
+		legajo INT PRIMARY KEY, -- No encriptamos el legajo porque es una clave primaria
+		nombre VARBINARY(8000),  
+		apellido VARBINARY(8000),  
+		dni VARBINARY(8000),  
+		direccion VARBINARY(8000),  
+		cargo CHAR(20),
+		turno CHAR(16), --tt,tm,tn,jornada completa
+		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave for�nea
+		mailPersonal VARBINARY(8000),  
+		mailEmpresa VARBINARY(8000),  
+		fechaBorrado DATE NULL,
+
+    	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
+	);
+END
+ELSE
+	PRINT 'La tabla EmpleadoEncriptado ya existe.';
+
+
 
 
 
