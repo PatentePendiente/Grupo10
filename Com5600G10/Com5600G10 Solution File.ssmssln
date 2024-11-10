@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # SQL Server Management Studio Solution File, Format Version 20.00
 VisualStudioVersion = 15.0.28307.421
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{4F2E2C19-372F-40D8-9FA7-9D2138C6997A}") = "SQL Scripts Com5600G10", "..\..\Documents\SQL Server Management Studio\SQL Scripts Com5600G10\SQL Scripts Com5600G10.ssmssqlproj", "{E6713908-7A75-4E45-8A27-F03EC9B876C9}"
+Project("{4F2E2C19-372F-40D8-9FA7-9D2138C6997A}") = "SQL Scripts Com5600G10", "SQL Scripts Com5600G10.ssmssqlproj", "{E6713908-7A75-4E45-8A27-F03EC9B876C9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{702E4167-E77F-4C98-A735-781B6FCDC0D6}"
 EndProject
@@ -13,6 +13,7 @@ Global
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{E6713908-7A75-4E45-8A27-F03EC9B876C9}.Default|Default.ActiveCfg = Default
+		{FACA5D8D-F8E4-460B-859F-766DECEDB0A9}.Default|Default.ActiveCfg = Default
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
