@@ -26,6 +26,7 @@ GO
 
 --1) SP para api de dolar
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.consultarDolarAPI
+    @valorDolarCompra DECIMAL(6,2) OUT
 AS
 BEGIN
 	DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
@@ -54,7 +55,7 @@ BEGIN
 
 	-- Parsear la respuesta JSON y retornar los resultados
 	DECLARE @datos VARCHAR(MAX) = (SELECT * FROM @json);
-	SELECT * FROM OPENJSON(@datos)
+	SELECT @valorDolarCompra FROM OPENJSON(@datos)
 	WITH
 	(
 		[moneda] CHAR(3) '$.moneda',
@@ -63,7 +64,7 @@ BEGIN
 		[compra] DECIMAL(6, 2) '$.compra',
 		[venta] DECIMAL(6, 2) '$.venta',
 		[fechaActualizacion] DATETIME2 '$.fechaActualizacion'
-	);
+	) WHERE casa = 'oficial';
 END;
 GO
 
@@ -104,15 +105,15 @@ CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarProducto
 AS
 BEGIN
     UPDATE Prod.Producto
-    SET fechaBorrado = GETDATE() -- Fecha de borrado lógico
+    SET fechaBorrado = GETDATE() -- Fecha de borrado lï¿½gico
     WHERE nombreProd = @nombreProd; -- Filtrar por el nombre del producto
 
-    -- Verificación de si se realizó el borrado lógico
+    -- Verificaciï¿½n de si se realizï¿½ el borrado lï¿½gico
     IF @@ROWCOUNT = 0
-        PRINT ('No se encontró el producto que se desea borrar')
-		--RAISEERROR('No se encontró el producto que se desea borrar', 16, 1);
+        PRINT ('No se encontrï¿½ el producto que se desea borrar')
+		--RAISEERROR('No se encontrï¿½ el producto que se desea borrar', 16, 1);
     ELSE
-        -- Si se actualizó correctamente, confirmar el borrado
+        -- Si se actualizï¿½ correctamente, confirmar el borrado
         PRINT 'Producto borrado correctamente'
 END;
 GO
@@ -122,18 +123,18 @@ CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarEmpleado
     @legajo INT
 AS
 BEGIN
-    -- Realizar el borrado lógico (actualizar la fecha de borrado)
+    -- Realizar el borrado lï¿½gico (actualizar la fecha de borrado)
     UPDATE HR.Empleado
-    SET fechaBorrado = GETDATE() -- Fecha de borrado lógico
+    SET fechaBorrado = GETDATE() -- Fecha de borrado lï¿½gico
     WHERE legajo = @legajo; -- Filtrar por el legajo del empleado
 
-    -- Verificación de si se realizó el borrado lógico
+    -- Verificaciï¿½n de si se realizï¿½ el borrado lï¿½gico
     IF @@ROWCOUNT = 0
-        -- Si no se actualizó ningún registro, lanzar un error
-        --RAISEERROR('No se encontró el empleado con el legajo proporcionado.', 16, 1);
+        -- Si no se actualizï¿½ ningï¿½n registro, lanzar un error
+        --RAISEERROR('No se encontrï¿½ el empleado con el legajo proporcionado.', 16, 1);
 		PRINT 'No se encontro al empleado'
     ELSE
-        -- Si se actualizó correctamente, confirmar el borrado
+        -- Si se actualizï¿½ correctamente, confirmar el borrado
         PRINT 'Empleado borrado correctamente.';
 END;
 GO
@@ -225,7 +226,7 @@ BEGIN
         -- Crear una nueva factura
         INSERT INTO INV.Factura (idEmp, fecha, hora, regPago, tipoFac)
         VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'Pendiente de Pago', 'A'); -- Suponiendo tipoFac = 'A' para venta
-        SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura recién creado
+        SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura reciï¿½n creado
     END
 
     -- Paso 2: Buscar el precio del producto por nombre
@@ -268,12 +269,12 @@ BEGIN
 
 	/*
     -- Paso 4: Determinar el precio final en base a la moneda
-    IF @precioUsd > 0 -- Si el precio está en USD
+    IF @precioUsd > 0 -- Si el precio estï¿½ en USD
     BEGIN
         -- Convertir el precio de USD a la moneda local (ARS)
         SET @precioEnLocal = @precioUsd * @tipoCambio;
     END
-    ELSE -- Si el precio está en ARS
+    ELSE -- Si el precio estï¿½ en ARS
     BEGIN
         SET @precioEnLocal = @precioArs;
     END
