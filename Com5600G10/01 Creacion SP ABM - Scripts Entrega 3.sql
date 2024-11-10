@@ -7,7 +7,7 @@ Grupo 10 sqLite, Integrantes:
 -MOSCOSO RENDON, JUAN DIEGO     -- 95472958
 -VARELA, DANIEL MARIANO			-- 40388978
 
-
+NOTA: cambiamos la funcionalidad de la api, ahora solo devuelve el valor del dolar que nos interesa a nostros
 INDICE: 
 1) SP intermedio para api de dolar y conseguir valores de dolar
 2) SP intermedio para registrar los 4 tipos de clientes del sistema
@@ -15,9 +15,11 @@ INDICE:
 4) SP para el borrado logico de empleados
 5) SP para insertar productos de manera individual, sin duplicados y que actualiza en caso de coincidencia
 
-
-
-
+Registracion de ventas
+----------------------
+6) Procedimiento para crear detalles de ventas
+7) Procedimiento para confirmar la compra
+8) Procedimiento para cancelar la compra
 */
 
 
@@ -26,45 +28,47 @@ GO
 
 --1) SP para api de dolar
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.consultarDolarAPI
-    @valorDolarCompra DECIMAL(6,2) OUT
+	@valorDolarCompra DECIMAL(6,2) OUT
 AS
 BEGIN
-	DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
-	DECLARE @Object INT;
-	DECLARE @json TABLE(respuesta VARCHAR(MAX));
-	DECLARE @respuesta VARCHAR(MAX);
+    -- Declarar variables
+    DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
+    DECLARE @Object INT;
+    DECLARE @json TABLE(respuesta VARCHAR(MAX));
+    DECLARE @respuesta VARCHAR(MAX);
 
-	-- Crear una instancia de objete OLE
-	EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
+    -- Crear una instancia de objeto OLE
+    EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
 
-	-- Definir las propiedades del objeto OLE para hacer llamada HTTP GET
-	EXEC sp_OAMethod @Object, 'OPEN', NULL, 'GET', @url, 'FALSE';
+    -- Definir las propiedades del objeto OLE para hacer llamada HTTP GET
+    EXEC sp_OAMethod @Object, 'OPEN', NULL, 'GET', @url, 'FALSE';
 
-	-- Enviar la consulta
-	EXEC sp_OAMethod @Object, 'SEND';
+    -- Enviar la consulta
+    EXEC sp_OAMethod @Object, 'SEND';
 
-	-- Almacenar el texto de la respuesta de la consulta
-	EXEC sp_OAMethod @Object, 'RESPONSETEXT', @respuesta OUTPUT;
+    -- Almacenar el texto de la respuesta de la consulta
+    EXEC sp_OAMethod @Object, 'RESPONSETEXT', @respuesta OUTPUT;
 
-	-- Insetar la respuesta de la consulta en la tabla @json
-	INSERT @json 
-	EXEC sp_OAGetProperty @Object, 'RESPONSETEXT' -- Obtenemos el valor de la propiedad 'RESPONSETEXT' del objeto OLE luego de realizar la consulta.
+    -- Insertar la respuesta de la consulta en la tabla @json
+    INSERT INTO @json (respuesta)
+    EXEC sp_OAGetProperty @Object, 'RESPONSETEXT';
 
-	-- Eliminar el objeto OLE
-	EXEC sp_OADestroy @Object;
+    -- Eliminar el objeto OLE
+    EXEC sp_OADestroy @Object;
 
-	-- Parsear la respuesta JSON y retornar los resultados
-	DECLARE @datos VARCHAR(MAX) = (SELECT * FROM @json);
-	SELECT @valorDolarCompra FROM OPENJSON(@datos)
-	WITH
-	(
-		[moneda] CHAR(3) '$.moneda',
-		[casa] VARCHAR(16) '$.casa',
-		[nombre] VARCHAR(16) '$.nombre',
-		[compra] DECIMAL(6, 2) '$.compra',
-		[venta] DECIMAL(6, 2) '$.venta',
-		[fechaActualizacion] DATETIME2 '$.fechaActualizacion'
-	) WHERE casa = 'oficial';
+    -- Parsear la respuesta JSON y retornar los resultados
+    DECLARE @datos VARCHAR(MAX) = (SELECT respuesta FROM @json);
+    SELECT @valorDolarCompra = compra FROM OPENJSON(@datos)
+    WITH
+    (
+        [moneda] CHAR(3) '$.moneda',
+        [casa] VARCHAR(16) '$.casa',
+        [nombre] VARCHAR(16) '$.nombre',
+        [compra] DECIMAL(6, 2) '$.compra',
+        [venta] DECIMAL(6, 2) '$.venta',
+        [fechaActualizacion] DATETIME2 '$.fechaActualizacion'
+    ) WHERE casa LIKE 'oficial';
+
 END;
 GO
 
@@ -105,15 +109,15 @@ CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarProducto
 AS
 BEGIN
     UPDATE Prod.Producto
-    SET fechaBorrado = GETDATE() -- Fecha de borrado lï¿½gico
+    SET fechaBorrado = GETDATE() -- Fecha de borrado lógico
     WHERE nombreProd = @nombreProd; -- Filtrar por el nombre del producto
 
-    -- Verificaciï¿½n de si se realizï¿½ el borrado lï¿½gico
+    -- Verificación de si se realizó el borrado lógico
     IF @@ROWCOUNT = 0
-        PRINT ('No se encontrï¿½ el producto que se desea borrar')
-		--RAISEERROR('No se encontrï¿½ el producto que se desea borrar', 16, 1);
+        PRINT ('No se encontró el producto que se desea borrar')
+		--RAISEERROR('No se encontró el producto que se desea borrar', 16, 1);
     ELSE
-        -- Si se actualizï¿½ correctamente, confirmar el borrado
+        -- Si se actualizó correctamente, confirmar el borrado
         PRINT 'Producto borrado correctamente'
 END;
 GO
@@ -123,18 +127,18 @@ CREATE OR ALTER PROCEDURE ImportadorDeArchivos.BorrarEmpleado
     @legajo INT
 AS
 BEGIN
-    -- Realizar el borrado lï¿½gico (actualizar la fecha de borrado)
+    -- Realizar el borrado lógico (actualizar la fecha de borrado)
     UPDATE HR.Empleado
-    SET fechaBorrado = GETDATE() -- Fecha de borrado lï¿½gico
+    SET fechaBorrado = GETDATE() -- Fecha de borrado lógico
     WHERE legajo = @legajo; -- Filtrar por el legajo del empleado
 
-    -- Verificaciï¿½n de si se realizï¿½ el borrado lï¿½gico
+    -- Verificación de si se realizó el borrado lógico
     IF @@ROWCOUNT = 0
-        -- Si no se actualizï¿½ ningï¿½n registro, lanzar un error
-        --RAISEERROR('No se encontrï¿½ el empleado con el legajo proporcionado.', 16, 1);
+        -- Si no se actualizó ningún registro, lanzar un error
+        --RAISEERROR('No se encontró el empleado con el legajo proporcionado.', 16, 1);
 		PRINT 'No se encontro al empleado'
     ELSE
-        -- Si se actualizï¿½ correctamente, confirmar el borrado
+        -- Si se actualizó correctamente, confirmar el borrado
         PRINT 'Empleado borrado correctamente.';
 END;
 GO
@@ -192,7 +196,9 @@ GO
 -----------------------------------------------------------------------
 --				      REGISTRACION DE VENTAS				      	 --
 -----------------------------------------------------------------------
---1)
+
+--6) Registrar Detalle de venta nuevo, si la factura no existe para el cajero que esta registrando la venta
+--se crea una nueva factura con estado falta confirmacion y si existe se crea un nuevo detalle de venta asociado a ese id fanstasma
 CREATE OR ALTER PROCEDURE Cajero.AgregarDetalleVenta
     @nombreProducto NVARCHAR(256), -- Nombre del producto
     @cantidadEnGr SMALLINT, -- Cantidad en gramos
@@ -202,31 +208,26 @@ BEGIN
 	DECLARE @idProd INT;
     DECLARE @nroFactura INT;
     DECLARE @idFactura CHAR(11);
-    DECLARE @precio DECIMAL(6,2);
-    DECLARE @precioFinal DECIMAL(6,2);
     DECLARE @unidadRef VARCHAR(64);
-    DECLARE @tipoCambio DECIMAL(6,4); 
-    DECLARE @precioEnLocal DECIMAL(6,2); -- Precio en moneda local (ARS)
-    DECLARE @respuesta VARCHAR(MAX);
+	DECLARE @cantRef DECIMAL(6,2);
+	DECLARE @unidad NVARCHAR(50);
     DECLARE @precioUsd DECIMAL(6,2); -- Precio en USD
     DECLARE @precioArs DECIMAL(6,2); -- Precio en ARS
-    DECLARE @json TABLE(respuesta VARCHAR(MAX)); -- Tabla temporal para almacenar respuesta de la API
-    DECLARE @url VARCHAR(64) = 'https://dolarapi.com/v1/dolares';
-    DECLARE @Object INT;
+    DECLARE @precioEnLocal DECIMAL(9,2); -- Precio prod en pesos
+    DECLARE @subTotalVendido DECIMAL(9,2); -- Precio final multiplicado por la cantidad comprada
 
     -- Paso 1: Buscar si ya existe una factura pendiente de confirmacion
     SELECT @nroFactura = nroFactura 
     FROM INV.Factura
-    WHERE idEmp = @legajoCajero AND regPago = 'Pendiente de Confirmacion'
+    WHERE idEmp = @legajoCajero AND regPago = 'falta confirmacion'
 
-
-    -- Si no se encuentra una factura pendiente, crear una nueva factura
+    -- Si no se encuentra una factura pendiente, crear una nueva factura asociada al legajo del cajero
     IF @nroFactura IS NULL
     BEGIN
         -- Crear una nueva factura
-        INSERT INTO INV.Factura (idEmp, fecha, hora, regPago, tipoFac)
-        VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'Pendiente de Pago', 'A'); -- Suponiendo tipoFac = 'A' para venta
-        SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura reciï¿½n creado
+        INSERT INTO INV.Factura (idEmp, fecha, hora, regPago)
+        VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'falta confirmacion'); 
+        SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura recién creado
     END
 
     -- Paso 2: Buscar el precio del producto por nombre
@@ -237,81 +238,135 @@ BEGIN
     FROM Prod.Producto
     WHERE nombreProd = @nombreProducto;
 
-    -- Verificar si el producto existe y tiene un precio
+    -- Verificar si el producto existe
     IF @idProd IS NULL
     BEGIN
         PRINT 'Producto no registrado.';
         RETURN;
     END
 
-	/******************
 	--paso 3 consultar la api para conseguir el precio de dolar
-	**************************/
+	DECLARE @valorDolarVenta DECIMAL(6,2);
+	EXEC ImportadorDeArchivos.consultarDolarAPI @valorDolarVenta OUT;
+	PRINT 'DOLAR COMPRA: ' + CAST(@valorDolarVenta AS VARCHAR);
 
-
-	/***************************/
-	print 'hasta aca todo bien'
-	select * from INV.Factura
-	where regPago = 'Pendiente de Pago'
-
-	DECLARE @mensaje varchar(MAX)
-	SET @mensaje = 'Precio USD: ' + CAST(@precioUsd AS VARCHAR(6)) + ', '
-              + 'Precio ARS: ' + CAST(@precioArs AS VARCHAR(6)) + ', '
-              + 'Unidad de Referencia: ' + ISNULL(@unidadRef, 'No disponible')
-			  + '   IdProd:' + CAST(@idProd AS varchar(6));
-
-	-- Mostrar el mensaje en el print
-	PRINT @mensaje;
-
-    --X controlar de kg a gr
-	/****************************/
-
-
-	/*
     -- Paso 4: Determinar el precio final en base a la moneda
-    IF @precioUsd > 0 -- Si el precio estï¿½ en USD
-    BEGIN
-        -- Convertir el precio de USD a la moneda local (ARS)
-        SET @precioEnLocal = @precioUsd * @tipoCambio;
-    END
-    ELSE -- Si el precio estï¿½ en ARS
-    BEGIN
+    IF @precioUsd > 0 -- Si el precio está en USD
+        SET @precioEnLocal = @precioUsd * @valorDolarVenta;
+    ELSE
         SET @precioEnLocal = @precioArs;
-    END
 
-    -- Paso 5: Insertar el detalle de venta con el precio en pesos (ARS) y cantidad en gramos
-    INSERT INTO INV.DetalleVenta (idProducto, idFactura, subTotal, cant, precio)
-    SELECT p.idProd, @nroFactura, @cantidadEnGr * @precioEnLocal, @cantidadEnGr, @precioEnLocal
+	-- Paso 5: Control de unidades y estandarizar a Gr
+	SET @cantRef = 
+    CASE 
+        WHEN @unidadRef LIKE 'kg' THEN 
+            1000
+        WHEN @unidadRef LIKE '[0-9][0-9][0-9] g' 
+             OR @unidadRef LIKE '[0-9][0-9] g' 
+             OR @unidadRef LIKE '[0-9] g' THEN 
+            CAST(SUBSTRING(@unidadRef, 1, CHARINDEX(' ', @unidadRef) - 1) AS INT)  -- Extraemos la cantidad en gramos
+        ELSE 
+            1  
+    END;
+
+    -- Paso 6: Registrar nuevo detalle de venta
+	SET @subTotalVendido = (@precioEnLocal * @cantidadEnGr) / @cantRef
+
+    INSERT INTO INV.DetalleVenta (idProducto, nroFactura, subTotal, cant, precio)
+    SELECT p.idProd, @nroFactura, @subTotalVendido, @cantidadEnGr, @precioEnLocal
     FROM Prod.Producto p
     WHERE p.nombreProd = @nombreProducto;
 
-    -- Paso 6: Mostrar resultados
-    SELECT 
-        @nombreProducto AS Producto,
-        @nroFactura AS NroFactura,
-        @cantidadEnGr * @precioEnLocal AS SubTotal, 
-        @cantidadEnGr AS Cantidad, 
-        @precioEnLocal AS Precio,
-        @tipoCambio AS TipoCambio,
-        @respuesta AS rta;
-		*/
-
-
-		--para ir eliminando duplicados:
-		delete from INV.Factura
-		where regPago = 'Pendiente de Pago'
 END
 GO
 
 
-EXEC Cajero.AgregarDetalleVenta
-    @nombreProducto = '34in Ultrawide Monitor', 
-    @cantidadEnGr = 1,
-    @legajoCajero = 257020;
+-- 7. Procedimiento para confirmar la venta
+CREATE OR ALTER PROCEDURE Cajero.ConfirmarVenta
+    @legajoCajero INT, -- Legajo del cajero que desea confirmar la venta
+	@regPago VARCHAR(22) = 'Pendiente de Pago' -- Puede no registrar el pago y quedaria como pendiente de pago
+AS
+BEGIN
+    DECLARE @nroFactura INT;
+
+    -- Paso 1: Buscar la factura pendiente de confirmación para el cajero
+    SELECT @nroFactura = nroFactura 
+    FROM INV.Factura
+    WHERE regPago = 'falta confirmacion' AND idEmp = @legajoCajero;
+
+    -- Verificar si existe una factura pendiente para este cajero
+    IF @nroFactura IS NULL
+    BEGIN
+        PRINT 'No hay una factura pendiente para confirmar.';
+        RETURN;
+    END
+
+    -- Paso 2: Contar el total de detalles de la factura
+    DECLARE @totalDetalles INT;
+    SELECT @totalDetalles = COUNT(*)
+    FROM INV.DetalleVenta
+    WHERE nroFactura = @nroFactura;
+
+    -- Paso 3: Verificar si la factura tiene detalles
+    IF @totalDetalles = 0
+    BEGIN
+        PRINT 'La factura no tiene detalles para confirmar.';
+        RETURN;
+    END
+
+    -- Paso 4: Confirmar la venta actualizando el estado de la factura
+    UPDATE INV.Factura
+    SET regPago = @regPago
+    WHERE nroFactura = @nroFactura;
+
+    PRINT 'Venta confirmada exitosamente. Factura: ' + CAST(@nroFactura AS VARCHAR);
+END
+GO
+
+
+-- 8. Procedimiento para cancelar la compra
+CREATE OR ALTER PROCEDURE Cajero.CancelarVenta
+    @legajoCajero INT -- Legajo del cajero que desea cancelar la venta
+AS
+BEGIN
+    DECLARE @nroFactura INT;
+    DECLARE @totalDetalles INT;
+
+    -- Paso 1: Buscar la factura pendiente de confirmación para el cajero
+    SELECT @nroFactura = nroFactura
+    FROM INV.Factura
+    WHERE idEmp = @legajoCajero AND regPago = 'falta confirmacion';
+
+    -- Verificar si existe una factura pendiente para este cajero
+    IF @nroFactura IS NULL
+    BEGIN
+        PRINT 'No hay una factura pendiente para cancelar.';
+        RETURN;
+    END
+
+    -- Paso 2: Contar el total de detalles de la factura
+    SELECT @totalDetalles = COUNT(*)
+    FROM INV.DetalleVenta
+    WHERE nroFactura = @nroFactura;
+
+    -- Paso 3: Verificar si la factura tiene detalles
+    IF @totalDetalles = 0
+    BEGIN
+        PRINT 'La factura no tiene detalles para cancelar.';
+        RETURN;
+    END
+
+    -- Paso 4: Eliminar los detalles de venta de la factura
+    DELETE FROM INV.DetalleVenta
+    WHERE nroFactura = @nroFactura;
+
+    -- Paso 5: Eliminar la factura
+    DELETE FROM INV.Factura
+    WHERE nroFactura = @nroFactura
+
+    PRINT 'Venta cancelada exitosamente. Factura: ' + CAST(@nroFactura AS VARCHAR);
+END
+GO
 
 
 
--- 2. Procedimiento para confirmar la compra
-
-
--- 3. Procedimiento para cancelar la compra

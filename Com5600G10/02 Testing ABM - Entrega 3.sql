@@ -13,14 +13,17 @@ INDICE:
 2) Ejecucion de SP para insercion de los 4 tipos de clientes
 3) Test de SP para el borrado logico de producto
 4) Test de SP para el borrado logico de empleado
-3) Test de SP insercion individual y control de duplicados del SP ImportadorDeArchivos.InsertarProducto
-4) Test de SP insercion individual y control de duplicados de factura del SP ImportadorDeArchivos.InsertarFactura
+5) Test de insercion individual y control de duplicados de producto
+
+6) Test de crear detalles de venta y luego confirmar la venta
 */
+
 
 --1) Api de Dolar
 -- Ejecutar la consulta de precio Dolar
-EXEC ImportadorDeArchivos.consultarDolarAPI;
-GO
+DECLARE @valorDolarVenta DECIMAL(6,2);
+EXEC ImportadorDeArchivos.consultarDolarAPI @valorDolarVenta OUT;
+PRINT 'DOLAR COMPRA: ' + CAST(@valorDolarVenta AS VARCHAR);
 
 --2) Ejecucion de SP para insercion de los 4 tipos de clientes
 EXEC DBA.InsertarClientes
@@ -93,7 +96,6 @@ SELECT * FROM HR.Empleado
 WHERE legajo = 1234;
 GO
 
-
 --5) Test de insercion individual y control de duplicados de producto
 --Inserta un producto prueba
 EXEC ImportadorDeArchivos.InsertarProducto 
@@ -124,38 +126,181 @@ WHERE nombreProd = 'productoDeTest'
 GO
 
 
-/*
---6) Test de insercion individual y control de duplicados de factura
---inserto factura test
-EXEC ImportadorDeArchivos.InsertarFactura
-    @idFactura = '000-00-0000',     
-    @legajoEmp = 257020,                  
-    @tipoFac = 'A',                
-    @tipoCliente = 'test',         
-    @genero = 'Female'
+
+/****** TESTING DE FACTURACIONES  CON CONFIRMACION******/
+--6) Test de crear detalles de venta y luego confirmar la venta
+--insercion sucursal de test
+DECLARE @idSucursal INT;
+
+IF NOT EXISTS (SELECT 1 FROM HR.Sucursal WHERE ciudad = 'test')
+BEGIN
+    INSERT INTO HR.Sucursal (ciudad, localidad)
+    VALUES ('test', 'sucursal para testeo');
+
+    -- Obtener el idSuc recien generado
+    SET @idSucursal = SCOPE_IDENTITY();
+END
+ELSE
+BEGIN
+    -- Si la sucursal ya existe, obtener el idSuc de la sucursal 'test'
+    SELECT @idSucursal = nroSucursal
+    FROM HR.Sucursal
+    WHERE ciudad = 'test';
+END;
+
+--insercion de empleado test
+IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = 1234)
+BEGIN
+    INSERT INTO HR.Empleado (legajo, dni, idSuc,nombre)
+    VALUES (1234, 45129672, @idSucursal,'Empleado de Test de borrado');
+END;
 GO
 
---intento insertar nuevamente para probar duplicado
-EXEC ImportadorDeArchivos.InsertarFactura
-    @idFactura = '000-00-0000',     
-    @legajoEmp = 257020,                  
-    @tipoFac = 'A',                
-    @tipoCliente = 'test',         
-    @genero = 'Female'
+--venta de producto dolarizado
+--5618	Accesorio electronic	34in Ultrawide Monitor	0.00	379.99	1 unidad
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = '34in Ultrawide Monitor', 
+    @cantidadEnGr = 1,
+    @legajoCajero = 1234;
 GO
 
---traigo todos los ids de factura y compruebo que me muestre un unico registro
+--venta de producto en gramos para ver la conversion
+--1641	te_e_infusiones	Infusión Tila Hacendado	0.50	0.00	100 g	NULL
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'Infusión Tila Hacendado', 
+    @cantidadEnGr = 250, --250gr
+    @legajoCajero = 1234;
+GO
+
+--venta de producto en kg para ver la conversion
+--1211	harina_y_preparado_reposteria	Harina de trigo Hacendado	0.43	0.00	kg	NULL
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'Harina de trigo Hacendado', 
+    @cantidadEnGr = 1500, --1500gr
+    @legajoCajero = 1234;
+GO
+
+--ver como una unica factura
 SELECT * FROM INV.Factura
-WHERE idFactura = '000-00-0000'
+WHERE regPago = 'falta confirmacion'
+GO
+--ver los detalles de ventas asociados a la factura
+SELECT dv.*, f.*
+FROM INV.DetalleVenta dv
+JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
+WHERE f.regPago = 'falta confirmacion' AND f.idEmp = 1234;
+GO
+
+--confirmacion de venta
+EXEC Cajero.ConfirmarVenta 1234
+GO
+
+--ver como quedo la factura confirmada
+SELECT * FROM INV.Factura
+WHERE regPago = 'pendiente de pago'
+GO
+--ver los detalles de ventas asociados a la factura confirmada
+SELECT dv.*, f.*
+FROM INV.DetalleVenta dv
+JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
+WHERE f.regPago = 'pendiente de pago' AND f.idEmp = 1234;
 GO
 
 
-*/
+--limpiar registros:
+delete from INV.DetalleVenta
+where nroFactura IN(
+SELECT dv.nroFactura
+FROM INV.DetalleVenta dv
+JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
+WHERE f.regPago = 'pendiente de pago' AND f.idEmp = 1234
+)
+GO
+
+--eliminar las facturas test finalmente:
+delete from INV.Factura
+where regPago = 'pendiente de pago' AND idEmp = 1234
+GO
+/****** TESTING DE FACTURACIONES CON CONFIRMACION EJECUTAR HASTA ACA******/
 
 
 
 
 
+
+/****** TESTING DE FACTURACIONES CON CANCELACION******/
+--7) Test de crear detalles de venta y luego cancelar la venta
+--insercion sucursal de test
+DECLARE @idSucursal INT;
+
+IF NOT EXISTS (SELECT 1 FROM HR.Sucursal WHERE ciudad = 'test')
+BEGIN
+    INSERT INTO HR.Sucursal (ciudad, localidad)
+    VALUES ('test', 'sucursal para testeo');
+
+    -- Obtener el idSuc recien generado
+    SET @idSucursal = SCOPE_IDENTITY();
+END
+ELSE
+BEGIN
+    -- Si la sucursal ya existe, obtener el idSuc de la sucursal 'test'
+    SELECT @idSucursal = nroSucursal
+    FROM HR.Sucursal
+    WHERE ciudad = 'test';
+END;
+
+--insercion de empleado test
+IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = 1234)
+BEGIN
+    INSERT INTO HR.Empleado (legajo, dni, idSuc,nombre)
+    VALUES (1234, 45129672, @idSucursal,'Empleado de Test de borrado');
+END;
+GO
+
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = '34in Ultrawide Monitor', 
+    @cantidadEnGr = 1,
+    @legajoCajero = 1234;
+GO
+
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'Infusión Tila Hacendado', 
+    @cantidadEnGr = 250, --250gr
+    @legajoCajero = 1234;
+GO
+
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'Harina de trigo Hacendado', 
+    @cantidadEnGr = 1500, --1500gr
+    @legajoCajero = 1234;
+GO
+
+--ver como una unica factura
+SELECT * FROM INV.Factura
+WHERE regPago = 'falta confirmacion'
+GO
+--ver los detalles de ventas asociados a la factura
+SELECT dv.*, f.*
+FROM INV.DetalleVenta dv
+JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
+WHERE f.regPago = 'falta confirmacion' AND f.idEmp = 1234;
+GO
+
+--cancelacion de venta
+EXEC Cajero.CancelarVenta 1234
+GO
+
+--ver como se eliminaron la facturas
+SELECT * FROM INV.Factura
+WHERE regPago = 'pendiente de pago'
+GO
+--ver como se eliminaron los detalles de ventas asociados a la factura cancelada
+SELECT dv.*, f.*
+FROM INV.DetalleVenta dv
+JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
+WHERE f.regPago = 'pendiente de pago' AND f.idEmp = 1234;
+GO
+/****** TESTING DE FACTURACIONES CON CANLACION EJECUTAR HASTA ACA******/
 
 
 

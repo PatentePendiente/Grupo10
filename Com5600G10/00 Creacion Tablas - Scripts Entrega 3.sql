@@ -225,12 +225,12 @@ BEGIN
     CREATE TABLE INV.DetalleVenta (
 			idLineaProducto INT PRIMARY KEY IDENTITY(1,1),
 			idProducto	INT,
-			idFactura	INT,
+			nroFactura	INT,
 			subTotal	DECIMAL(9,2),
 			cant		SMALLINT NOT NULL, --estandarizado a gr
-			precio		DECIMAL(6,2)
+			precio		DECIMAL(9,2)
 
-	CONSTRAINT fkFactura FOREIGN KEY (idFactura) REFERENCES INV.Factura(nroFactura),
+	CONSTRAINT fkFactura FOREIGN KEY (nroFactura) REFERENCES INV.Factura(nroFactura),
 	CONSTRAINT fkProducto  FOREIGN KEY (idProducto)  REFERENCES PROD.Producto(idProd),
 	);
     PRINT 'Tabla DetalleVenta creada.';
