@@ -23,6 +23,7 @@ GO
 
 --1) Api de Dolar
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.consultarDolarAPI
+	@valorDolarCompra DECIMAL(6, 2) OUT,
 AS
 BEGIN
 	-- Para ejecutar un llamado a una API desde SQL primero vamos a tener que 
@@ -59,7 +60,7 @@ BEGIN
 
 	-- Parsear la respuesta JSON y retornar los resultados
 	DECLARE @datos VARCHAR(MAX) = (SELECT * FROM @json);
-	SELECT * FROM OPENJSON(@datos)
+	SELECT @valorDolarCompra = compra FROM OPENJSON(@datos)
 	WITH
 	(
 		[moneda] CHAR(3) '$.moneda',
@@ -68,7 +69,7 @@ BEGIN
 		[compra] DECIMAL(6, 2) '$.compra',
 		[venta] DECIMAL(6, 2) '$.venta',
 		[fechaActualizacion] DATETIME2 '$.fechaActualizacion'
-	);
+	) WHERE casa = 'oficial';
 END;
 GO
 --EXEC PROD.consultarDolarAPI;
