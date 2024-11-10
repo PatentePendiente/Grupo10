@@ -15,7 +15,10 @@ INDICE:
 4) Test de SP para el borrado logico de empleado
 5) Test de insercion individual y control de duplicados de producto
 
+Nota: Para que ejecutar estos test hay que ejecutar 03 e importar los productos
+porque utilizo productos del catalogo como testing
 6) Test de crear detalles de venta y luego confirmar la venta
+7) Test de crear detalles de venta y luego cancelar la venta
 */
 
 

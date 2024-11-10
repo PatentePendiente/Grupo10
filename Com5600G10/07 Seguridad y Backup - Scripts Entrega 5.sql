@@ -9,17 +9,18 @@ Grupo 10 sqLite, Integrantes:
 
 
 INDICE: 
-2) Creacion de usuario y sede de permisos para el responsable de importar archivos
-3) Creacion del login para el supervisor
-4) Creacion del usuario para el supervisor
-5) Creacion del rol para el supervisor
-6) Creación de stored procedure para crear una nota de crédito
-7) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
+1) Creacion de usuario y sede de permisos para el responsable de importar archivos
+2) Creacion del login para el supervisor
+3) Creacion del usuario para el supervisor
+4) Creacion del rol para el supervisor
+5) Creación de stored procedure para crear una nota de crédito
+6) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 
 */
 
 
---2) Creacion de usuario y sede de permisos para el responsable de importar archivos
+
+--1) Creacion de usuario y sede de permisos para el responsable de importar archivos
 -- Verificar si el LOGIN ya existe
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioImportador')
 BEGIN
@@ -43,7 +44,7 @@ GO
 GRANT EXECUTE ON SCHEMA::ImportadorDeArchivos TO UsuarioImportador;   
 GO
 
--- 3) Creacion del login para el supervisor
+-- 2) Creacion del login para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'SupervisorLogin')
 BEGIN
     CREATE LOGIN SupervisorLogin WITH PASSWORD = 'Supervisor123!';
@@ -51,7 +52,7 @@ BEGIN
 END
 GO
 
--- 4) Creacion del usuario para el supervisor
+-- 3) Creacion del usuario para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorUser')
 BEGIN
     CREATE USER SupervisorUser FOR LOGIN SupervisorLogin;
@@ -59,7 +60,7 @@ BEGIN
 END
 GO
 
--- 5) Creacion del rol para el supervisor
+-- 4) Creacion del rol para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorRol')
 BEGIN
     CREATE ROLE SupervisorRol;
@@ -69,7 +70,7 @@ END
 GO
 
 
--- 6) Creación de stored procedure para crear una nota de crédito
+-- 5) Creación de stored procedure para crear una nota de crédito
 CREATE OR ALTER PROCEDURE INV.CrearNotaCredito
     @idFactura CHAR(11),
     @nombreProducto VARCHAR(256),
@@ -112,7 +113,7 @@ END
 GO
 
 
--- 7) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
+-- 6) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 GRANT EXECUTE ON INV.CrearNotaCredito TO SupervisorRol;
 
 

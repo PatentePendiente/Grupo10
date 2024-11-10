@@ -63,7 +63,7 @@ GO
 --drop procedure PROD.importarEmpleados
 
 
---7) Importado de Ventas
+--6) Importado de Ventas
 EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
 GO
 -- DROP PROCEDURE PROD.importarCatalogo;

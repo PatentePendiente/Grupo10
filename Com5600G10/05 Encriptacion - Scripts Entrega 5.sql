@@ -12,7 +12,7 @@ INDICE:
 1) Creación de certificados y claves para encriptación
 2) Creacion de la tabla EmpleadoEncriptado
 3) Creacion de un stored procedure para importar los datos de empleados encriptados
-
+4) Creación de un stored procedure para mostrar a los empleados desencriptados
 
 */
 
@@ -108,8 +108,8 @@ BEGIN
 		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.apellido) AS apellido, 
 		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), CAST(CAST(t.doc AS INT) AS CHAR(8))) AS dni, 
 		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.direccion) AS direccion, 
-		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.cargo) AS cargo, 
-		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.turno) AS turno, 
+		cargo, 
+		turno, 
 		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.emailPers) AS emailPers,
 		ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), t.emailEmp) AS emailEmp, 
 		S.nroSucursal AS nroSucursal -- No encriptamos el nro de sucursal ya que es clave foranea
@@ -135,10 +135,30 @@ BEGIN
 	-- Cerramos la clave simetrica
 	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
 END
-	
+GO	
 
+--8) Store Procedure para mostrar a los empleados desencriptados
+CREATE OR ALTER PROCEDURE DBA.mostrarEmpleados 
+AS
+BEGIN
+	-- Abrimos la clave simetrica para usarla para la desencriptacion 
+	OPEN SYMMETRIC KEY EmpleadosClaveSimetrica
+	DECRYPTION BY CERTIFICATE EmpleadosCert;
 
+	SELECT
+		legajo,
+		CONVERT(VARCHAR(60), DecryptByKey(nombre)) AS nombre,
+		CONVERT(VARCHAR(60), DecryptByKey(apellido)) AS apellido,
+		CONVERT(CHAR(8), DecryptByKey(dni)) AS dni,
+		CONVERT(VARCHAR(300), DecryptByKey(direccion)) AS direccion,
+		cargo,
+		turno,
+		idSuc,
+		CONVERT(VARCHAR(70), DecryptByKey(mailPersonal)) AS mailPersonal,
+		CONVERT(VARCHAR(70), DecryptByKey(mailEmpresa)) AS mailEmpresa,
+		fechaBorrado
+	FROM HR.Empleado;
 
-
-
-
+	CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
+END;
+GO
