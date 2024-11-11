@@ -196,6 +196,12 @@ GO
 -----------------------------------------------------------------------
 --				      REGISTRACION DE VENTAS				      	 --
 -----------------------------------------------------------------------
+/*
+Severidad de Raise_Error:
+00-10 -> informativo o advertencias
+11-16 -> errores de usuario 
+17-25 -> errores graves que pueden requerir intervencion administrativa o cierre de sesion
+*/
 
 --6) Registrar Detalle de venta nuevo, si la factura no existe para el cajero que esta registrando la venta
 --se crea una nueva factura con estado falta confirmacion y si existe se crea un nuevo detalle de venta asociado a ese id fanstasma
@@ -216,7 +222,29 @@ BEGIN
     DECLARE @precioEnLocal DECIMAL(9,2); -- Precio prod en pesos
     DECLARE @subTotalVendido DECIMAL(9,2); -- Precio final multiplicado por la cantidad comprada
 
-    -- Paso 1: Buscar si ya existe una factura pendiente de confirmacion
+	--Validacion de que existe el nroLegajo
+	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
+	BEGIN
+    RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+    RETURN;
+	END
+
+    -- Paso 1: Buscar el precio del producto por nombre
+    SELECT @precioUsd = precioUsd,
+           @precioArs = precioArs,
+           @unidadRef = unidadRef,
+		   @idProd = idProd
+    FROM Prod.Producto
+    WHERE nombreProd = @nombreProducto;
+
+    -- Verificar si el producto existe
+    IF @idProd IS NULL
+    BEGIN
+        RAISERROR('Producto no registrado: %s', 16, 1, @nombreProducto);
+        RETURN;
+    END
+
+    -- Paso 2: Buscar si ya existe una factura pendiente de confirmacion
     SELECT @nroFactura = nroFactura 
     FROM INV.Factura
     WHERE idEmp = @legajoCajero AND regPago = 'falta confirmacion'
@@ -228,21 +256,6 @@ BEGIN
         INSERT INTO INV.Factura (idEmp, fecha, hora, regPago)
         VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'falta confirmacion'); 
         SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura recién creado
-    END
-
-    -- Paso 2: Buscar el precio del producto por nombre
-    SELECT @precioUsd = precioUsd,
-           @precioArs = precioArs,
-           @unidadRef = unidadRef,
-		   @idProd = idProd
-    FROM Prod.Producto
-    WHERE nombreProd = @nombreProducto;
-
-    -- Verificar si el producto existe
-    IF @idProd IS NULL
-    BEGIN
-        PRINT 'Producto no registrado.';
-        RETURN;
     END
 
 	--paso 3 consultar la api para conseguir el precio de dolar
@@ -289,6 +302,13 @@ AS
 BEGIN
     DECLARE @nroFactura INT;
 
+	--Validacion de que existe el nroLegajo
+	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
+	BEGIN
+    RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+    RETURN;
+	END
+
     -- Paso 1: Buscar la factura pendiente de confirmación para el cajero
     SELECT @nroFactura = nroFactura 
     FROM INV.Factura
@@ -297,7 +317,7 @@ BEGIN
     -- Verificar si existe una factura pendiente para este cajero
     IF @nroFactura IS NULL
     BEGIN
-        PRINT 'No hay una factura pendiente para confirmar.';
+        RAISERROR('No hay una factura pendiente de confirmacion asociado al legajo %d.', 16, 1, @legajoCajero);
         RETURN;
     END
 
@@ -310,7 +330,7 @@ BEGIN
     -- Paso 3: Verificar si la factura tiene detalles
     IF @totalDetalles = 0
     BEGIN
-        PRINT 'La factura no tiene detalles para confirmar.';
+        RAISERROR('La factura %d no tiene detalles de venta para ser confirmados.', 16, 1, @nroFactura);
         RETURN;
     END
 
@@ -332,6 +352,13 @@ BEGIN
     DECLARE @nroFactura INT;
     DECLARE @totalDetalles INT;
 
+	--Validacion de que existe el nroLegajo
+	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
+	BEGIN
+		RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+		RETURN;
+	END
+
     -- Paso 1: Buscar la factura pendiente de confirmación para el cajero
     SELECT @nroFactura = nroFactura
     FROM INV.Factura
@@ -340,7 +367,7 @@ BEGIN
     -- Verificar si existe una factura pendiente para este cajero
     IF @nroFactura IS NULL
     BEGIN
-        PRINT 'No hay una factura pendiente para cancelar.';
+        RAISERROR('No hay una factura pendiente para cancelar asociado al legajo %d.', 16, 1, @legajoCajero);
         RETURN;
     END
 
@@ -352,7 +379,7 @@ BEGIN
     -- Paso 3: Verificar si la factura tiene detalles
     IF @totalDetalles = 0
     BEGIN
-        PRINT 'La factura no tiene detalles para cancelar.';
+        RAISERROR('La factura %d no tiene detalles asociados para ser cancelados.', 16, 1, @nroFactura);
         RETURN;
     END
 

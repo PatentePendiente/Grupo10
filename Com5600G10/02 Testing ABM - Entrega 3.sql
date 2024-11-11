@@ -1,7 +1,7 @@
 /*				--Trabajo Integrador de Base de Datos Aplicada--
 Materia: Bases de Datos Aplicada
 Fecha: 1/11/2024
-Entrega Nro: 3 Testing de SP
+Entrega Nro: 3 Testing de SP ABM
 Grupo 10 sqLite, Integrantes:
 -RAMATO, RODRIGO EXEQUIEL       -- 45129672	
 -MOSCOSO RENDON, JUAN DIEGO     -- 95472958
@@ -19,6 +19,11 @@ Nota: Para que ejecutar estos test hay que ejecutar 03 e importar los productos
 porque utilizo productos del catalogo como testing
 6) Test de crear detalles de venta y luego confirmar la venta
 7) Test de crear detalles de venta y luego cancelar la venta
+
+
+TEST QUE DEBERIAN PRODUCIR FALLO:
+8) Producto que no existe
+9) Empleado no registrado en el sistema
 */
 
 
@@ -304,6 +309,86 @@ JOIN INV.Factura f ON dv.nroFactura = f.nroFactura
 WHERE f.regPago = 'pendiente de pago' AND f.idEmp = 1234;
 GO
 /****** TESTING DE FACTURACIONES CON CANLACION EJECUTAR HASTA ACA******/
+
+
+
+
+
+/****** TEST QUE DEBERIAN PRODUCIR UN FALLO ******/
+/* Preparar escenario creando la sucursal y empleado para los test*/
+--insercion sucursal de test
+DECLARE @idSucursal INT;
+
+IF NOT EXISTS (SELECT 1 FROM HR.Sucursal WHERE ciudad = 'test')
+BEGIN
+    INSERT INTO HR.Sucursal (ciudad, localidad)
+    VALUES ('test', 'sucursal para testeo');
+
+    -- Obtener el idSuc recien generado
+    SET @idSucursal = SCOPE_IDENTITY();
+END
+ELSE
+BEGIN
+    -- Si la sucursal ya existe, obtener el idSuc de la sucursal 'test'
+    SELECT @idSucursal = nroSucursal
+    FROM HR.Sucursal
+    WHERE ciudad = 'test';
+END;
+
+--insercion de empleado test
+IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = 1234)
+BEGIN
+    INSERT INTO HR.Empleado (legajo, dni, idSuc,nombre)
+    VALUES (1234, 45129672, @idSucursal,'Empleado de Test de borrado');
+END;
+GO
+
+
+
+--8) Producto que no existe
+--Insertar producto que no existe y ver que se produzca el fallo
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'producto de fallo', 
+    @cantidadEnGr = 1,
+    @legajoCajero = 1234;
+GO
+
+--ERROR que muestra: Producto no registrado: producto de fallo
+
+--9) Empleado no registrado en el sistema
+--Insertar legajo que no existe y ver que se produzca el fallo
+EXEC Cajero.AgregarDetalleVenta
+    @nombreProducto = 'Harina de trigo Hacendado', 
+    @cantidadEnGr = 1500, --1500gr
+    @legajoCajero = 1122; --legajo que no existe
+GO
+--ERROR que muestra: El legajo del cajero 1122 no se encuentra registrado
+
+
+
+--Por ultimo eliminar los registros de testing:
+DELETE FROM HR.Empleado 
+WHERE legajo = 1234;
+GO
+
+DELETE FROM HR.Sucursal
+WHERE ciudad = 'test'
+GO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
