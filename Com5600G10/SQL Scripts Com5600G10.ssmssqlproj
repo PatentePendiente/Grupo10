@@ -76,11 +76,17 @@
           <AssociatedConnUserName />
           <FullPath>08 Testing Permisos y Seguridad - Entrega 5.sql</FullPath>
         </FileNode>
-        <FileNode Name="09 Reportes XML - Aceptacion del Usuario.sql">
+        <FileNode Name="09 Reportes XML.sql">
           <AssociatedConnectionMoniker>8c91a03d-f9b4-46c0-a305-b5dcc79ff907:RODRIPC\SQLEXPRESS:True</AssociatedConnectionMoniker>
           <AssociatedConnSrvName>RODRIPC\SQLEXPRESS</AssociatedConnSrvName>
           <AssociatedConnUserName />
-          <FullPath>09 Reportes XML - Aceptacion del Usuario.sql</FullPath>
+          <FullPath>09 Reportes XML.sql</FullPath>
+        </FileNode>
+        <FileNode Name="10 Testing Reportes XML.sql">
+          <AssociatedConnectionMoniker>8c91a03d-f9b4-46c0-a305-b5dcc79ff907:RODRIPC\SQLEXPRESS:True</AssociatedConnectionMoniker>
+          <AssociatedConnSrvName>RODRIPC\SQLEXPRESS</AssociatedConnSrvName>
+          <AssociatedConnUserName />
+          <FullPath>10 Testing Reportes XML.sql</FullPath>
         </FileNode>
       </Items>
     </LogicalFolder>

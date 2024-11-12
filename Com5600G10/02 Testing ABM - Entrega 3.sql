@@ -375,23 +375,9 @@ DELETE FROM HR.Sucursal
 WHERE ciudad = 'test'
 GO
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+DELETE FROM PROD.Producto
+WHERE lineaDeProducto = 'Producto de Test'
+GO
 
 
 
