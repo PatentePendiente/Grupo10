@@ -9,12 +9,15 @@ Grupo 10 sqLite, Integrantes:
 
 
 INDICE: 
-1) Creación de certificados y claves para encriptación
-2) Creacion de la tabla EmpleadoEncriptado
-3) Creacion de un stored procedure para importar los datos de empleados encriptados
-4) Creación de un stored procedure para mostrar a los empleados desencriptados
+1) Creacion de certificados y claves para encriptacion
+2) Modificacion de la tabla Empleado para  la encriptacion de los datos
+3) Modificacion del stored procedure para importar los datos de empleados
+4) Creacion de un stored procedure para mostrar a los empleados desencriptados
 
 */
+
+USE Com5600G10
+GO
 
 -- 1) Creación de certificados y claves para encriptación
 IF NOT EXISTS (SELECT * FROM sys.symmetric_keys WHERE name = '##MS_DatabaseMasterKey##')
@@ -40,32 +43,91 @@ ELSE
     PRINT 'La clave simétrica EmpleadosClaveSimetrica ya existe';	
 GO
 
--- 2) Creacion de la tabla EmpleadoEncriptado
--- Debido a los datos privados de los empleados deben estar encritados,
--- creamos una nueva tabla que va a almacenar los datos encriptados de los empledos
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[HR].[EmpleadoEncriptado]') AND type in (N'U'))
-BEGIN
-	CREATE TABLE HR.EmpleadoEncriptado(
-		legajo INT PRIMARY KEY, -- No encriptamos el legajo porque es una clave primaria
-		nombre VARBINARY(8000),  
-		apellido VARBINARY(8000),  
-		dni VARBINARY(8000),  
-		direccion VARBINARY(8000),  
-		cargo CHAR(20),
-		turno CHAR(16), --tt,tm,tn,jornada completa
-		idSuc TINYINT NOT NULL, -- No encriptamos el id de la sucursal porque es una clave for�nea
-		mailPersonal VARBINARY(8000),  
-		mailEmpresa VARBINARY(8000),  
-		fechaBorrado DATE NULL,
+-- 2) Modificacion de la tabla Empleado para  la encriptacion de los datos
+-- Debido a que en la entrega 3 creamos la tabla Empleado sin tener en cuenta la encriptacion de los datos,
+-- vamos a modificar la tabla Empleado para que los datos sensibles de los empleados esten encriptados.
 
-    	CONSTRAINT fkSucursal FOREIGN KEY (idSuc) REFERENCES hr.sucursal(nroSucursal)
-	);
+-- Paso 1: Verificamos si la tabla HR.Empleado ya está encriptada
+-- (Verificamos si la columna nombre es de tipo VARBINARY)
+IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[HR].[Empleado]') AND name = 'nombre' AND system_type_id = 165)
+BEGIN
+    PRINT 'La tabla Empleado ya está encriptada.';
 END
 ELSE
-	PRINT 'La tabla EmpleadoEncriptado ya existe.';
+BEGIN
+    -- Paso 2: Creamos una tabla temporal para almacenar los datos de HR.Empleado mientras hacemos la transformacion
+    CREATE TABLE #EmpleadoTemp (
+        legajo INT PRIMARY KEY,
+        nombre VARCHAR(60),
+        apellido VARCHAR(60),
+        dni BIGINT,
+        direccion VARCHAR(300),
+        cargo CHAR(20),
+        turno CHAR(16),
+        idSuc TINYINT,
+        mailPersonal VARCHAR(70),
+        mailEmpresa VARCHAR(70),
+        fechaBorrado DATE
+    );
 
--- 3) Creacion de un stored procedure para importar los datos de empleados encriptados
-CREATE OR ALTER PROCEDURE ImportadorDeArchivos.ImportarEmpleadosEncriptados
+    -- Copiamos los datos de HR.Empleado a la tabla temporal
+    INSERT INTO #EmpleadoTemp
+    SELECT legajo, nombre, apellido, dni, direccion, cargo, turno, idSuc, mailPersonal, mailEmpresa, fechaBorrado
+    FROM HR.Empleado;
+
+    -- Paso 3: Alteramos la tabla HR.Empleado para agregar nuevas columnas VARBINARY
+    ALTER TABLE HR.Empleado ADD nombre_nuevo VARBINARY(8000);
+    ALTER TABLE HR.Empleado ADD apellido_nuevo VARBINARY(8000);
+    ALTER TABLE HR.Empleado ADD dni_nuevo VARBINARY(8000);
+    ALTER TABLE HR.Empleado ADD direccion_nuevo VARBINARY(8000);
+    ALTER TABLE HR.Empleado ADD mailPersonal_nuevo VARBINARY(8000);
+    ALTER TABLE HR.Empleado ADD mailEmpresa_nuevo VARBINARY(8000);
+
+    -- Paso 4: Abrimos la clave simétrica
+    OPEN SYMMETRIC KEY EmpleadosClaveSimetrica DECRYPTION BY CERTIFICATE EmpleadosCert;
+
+    -- Paso 5: Insertamos los datos en las nuevas columnas encriptando los campos necesarios
+    UPDATE HR.Empleado
+    SET 
+        nombre_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), temp.nombre),
+        apellido_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), temp.apellido),
+        dni_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), CAST(temp.dni AS VARCHAR(8000))),
+        direccion_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), temp.direccion),
+        mailPersonal_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), temp.mailPersonal),
+        mailEmpresa_nuevo = ENCRYPTBYKEY(KEY_GUID('EmpleadosClaveSimetrica'), temp.mailEmpresa)
+    FROM #EmpleadoTemp temp
+    WHERE HR.Empleado.legajo = temp.legajo;
+
+	-- Eliminamos la tabla temporal
+    DROP TABLE #EmpleadoTemp;
+
+    -- Cerramos la clave simétrica
+    CLOSE SYMMETRIC KEY EmpleadosClaveSimetrica;
+
+    -- Paso 6: Eliminamos las columnas antiguas
+    ALTER TABLE HR.Empleado DROP COLUMN nombre;
+    ALTER TABLE HR.Empleado DROP COLUMN apellido;
+    ALTER TABLE HR.Empleado DROP COLUMN dni;
+    ALTER TABLE HR.Empleado DROP COLUMN direccion;
+    ALTER TABLE HR.Empleado DROP COLUMN mailPersonal;
+    ALTER TABLE HR.Empleado DROP COLUMN mailEmpresa;
+
+    -- Paso 7: Renombramos las nuevas columnas con los nombres originales
+    EXEC sp_rename 'HR.Empleado.nombre_nuevo', 'nombre', 'COLUMN';
+    EXEC sp_rename 'HR.Empleado.apellido_nuevo', 'apellido', 'COLUMN';
+    EXEC sp_rename 'HR.Empleado.dni_nuevo', 'dni', 'COLUMN';
+    EXEC sp_rename 'HR.Empleado.direccion_nuevo', 'direccion', 'COLUMN';
+    EXEC sp_rename 'HR.Empleado.mailPersonal_nuevo', 'mailPersonal', 'COLUMN';
+    EXEC sp_rename 'HR.Empleado.mailEmpresa_nuevo', 'mailEmpresa', 'COLUMN';
+
+    PRINT 'Datos encriptados y actualizados en la tabla Empleado.';
+END
+GO
+
+
+-- 3) Modificacion del stored procedure para importar los datos de empleados
+CREATE OR ALTER PROCEDURE ImportadorDeArchivos.ImportarEmpleados
+	@ruta VARCHAR(MAX)
 AS
 BEGIN
 	-- Creamos una tabla temporal para almacenar los datos importados
@@ -137,7 +199,7 @@ BEGIN
 END
 GO	
 
---8) Store Procedure para mostrar a los empleados desencriptados
+-- 4) Store Procedure para mostrar a los empleados desencriptados
 CREATE OR ALTER PROCEDURE DBA.mostrarEmpleados 
 AS
 BEGIN
