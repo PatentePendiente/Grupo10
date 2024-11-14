@@ -114,8 +114,11 @@ BEGIN
 
     -- Verificación de si se realizó el borrado lógico
     IF @@ROWCOUNT = 0
-        PRINT ('No se encontró el producto que se desea borrar')
-		--RAISEERROR('No se encontró el producto que se desea borrar', 16, 1);
+	BEGIN
+       -- PRINT ('No se encontró el producto que se desea borrar')
+		RAISERROR('No se encontró el producto que se desea borrar %s', 16, 1, @nombreProd);
+		RETURN;
+	END
     ELSE
         -- Si se actualizó correctamente, confirmar el borrado
         PRINT 'Producto borrado correctamente'
@@ -132,11 +135,13 @@ BEGIN
     SET fechaBorrado = GETDATE() -- Fecha de borrado lógico
     WHERE legajo = @legajo; -- Filtrar por el legajo del empleado
 
-    -- Verificación de si se realizó el borrado lógico
+	-- Verificación de si se realizó el borrado lógico
     IF @@ROWCOUNT = 0
         -- Si no se actualizó ningún registro, lanzar un error
-        --RAISEERROR('No se encontró el empleado con el legajo proporcionado.', 16, 1);
-		PRINT 'No se encontro al empleado'
+	BEGIN
+        RAISERROR('No se encontró el empleado con el legajo proporcionado %d', 16, 1, @legajo);
+        RETURN;
+	END
     ELSE
         -- Si se actualizó correctamente, confirmar el borrado
         PRINT 'Empleado borrado correctamente.';
@@ -206,7 +211,7 @@ Severidad de Raise_Error:
 --6) Registrar Detalle de venta nuevo, si la factura no existe para el cajero que esta registrando la venta
 --se crea una nueva factura con estado falta confirmacion y si existe se crea un nuevo detalle de venta asociado a ese id fanstasma
 CREATE OR ALTER PROCEDURE Cajero.AgregarDetalleVenta
-    @nombreProducto NVARCHAR(256), -- Nombre del producto
+    @nombreProducto VARCHAR(256), -- Nombre del producto
     @cantidadEnGr SMALLINT, -- Cantidad en gramos
     @legajoCajero INT -- Legajo del cajero (empleado)
 AS
@@ -225,8 +230,8 @@ BEGIN
 	--Validacion de que existe el nroLegajo
 	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
 	BEGIN
-    RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
-    RETURN;
+		RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+		RETURN;
 	END
 
     -- Paso 1: Buscar el precio del producto por nombre
@@ -305,8 +310,8 @@ BEGIN
 	--Validacion de que existe el nroLegajo
 	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
 	BEGIN
-    RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
-    RETURN;
+		RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+		RETURN;
 	END
 
     -- Paso 1: Buscar la factura pendiente de confirmación para el cajero

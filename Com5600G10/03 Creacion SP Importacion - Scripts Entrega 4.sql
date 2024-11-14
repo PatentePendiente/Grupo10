@@ -27,7 +27,7 @@ BEGIN
 
 	CREATE TABLE #tablaImportada (
 		idProducto VARCHAR(MAX),
-		nombreProducto NVARCHAR(MAX),
+		nombreProducto VARCHAR(MAX),
 		proveedor NVARCHAR(MAX),
 		categoria NVARCHAR(MAX),
 		cantidadUnidad NVARCHAR(MAX),
@@ -84,11 +84,6 @@ CREATE OR ALTER PROCEDURE ImportadorDeArchivos.importarSucursales
 	@ruta VARCHAR(MAX)
 AS
 BEGIN
-    -- Habilitar consultas distribuidas ad hoc
-    EXEC sp_configure 'show advanced options', 1;
-    RECONFIGURE;
-    EXEC sp_configure 'Ad Hoc Distributed Queries', 1;
-    RECONFIGURE;
 
 	CREATE TABLE #tablaImportada (
 		ciudad VARCHAR(16),

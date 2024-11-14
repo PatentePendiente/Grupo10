@@ -26,7 +26,7 @@ ordenado de mayor a menor.
 Pedido: Por rango de fechas: ingresando un rango de fechas a demanda, debe poder mostrar la cantidad de productos vendidos en ese 
 rango por sucursal, ordenado de mayor a menor.
 
-No Resuelto: 6) Reporte de los 5 productos mas vendido para el mes de una fecha dada
+6) Reporte de las mayores cinco ventas para cada semana del mes y año dados 
 Pedido: Mostrar los 5 productos más vendidos en un mes, por semana
 
 7) Reporte de los 5 productos menos vendidos
@@ -194,6 +194,55 @@ GO
 
 
 --6) Reporte de los 5 productos mas vendido para el mes de una fecha dada
+CREATE OR ALTER PROCEDURE Reportes.ProductosMasVendidosPorSemanaEnElMesXML
+    @mes INT,   -- mes en cuestion
+    @anio INT   -- año del mes en cuestion
+AS
+BEGIN
+    -- Uso de una tabla temporal para almacenar los resultados intermedios
+    CREATE TABLE #ProductosMasVendidos (
+        Semana INT,
+        Producto NVARCHAR(100),
+        CantidadTotalVendida INT,
+        Ranking INT
+    );
+
+    -- Ranking por semana
+    INSERT INTO #ProductosMasVendidos (Semana, Producto, CantidadTotalVendida, Ranking)
+    SELECT 
+        DATEPART(WEEK, f.fecha) AS Semana,
+        p.nombreProd AS Producto,
+        SUM(dv.cant) AS CantidadTotalVendida,
+        ROW_NUMBER() OVER (PARTITION BY DATEPART(WEEK, f.fecha) ORDER BY SUM(dv.cant) DESC) AS Ranking
+    FROM 
+        INV.DetalleVenta dv
+    INNER JOIN 
+        INV.Factura f ON dv.nroFactura = f.nroFactura
+    INNER JOIN 
+        PROD.Producto p ON dv.idProducto = p.idProd
+    WHERE 
+        MONTH(f.fecha) = @mes AND YEAR(f.fecha) = @anio
+    GROUP BY 
+        DATEPART(WEEK, f.fecha),
+        p.nombreProd;
+
+    -- Seleccion del top 5 productos mas vendidos
+    SELECT 
+        Semana,
+        Producto,
+        CantidadTotalVendida
+    FROM 
+        #ProductosMasVendidos
+    WHERE 
+        Ranking <= 5
+    ORDER BY 
+        Semana, 
+        CantidadTotalVendida DESC
+    FOR XML PATH('ProductoMasVendido'), ROOT('ReporteProductosMasVendidosPorSemana');
+
+    DROP TABLE #ProductosMasVendidos;
+END;
+GO
 
 
 --7) Reporte de los cinco productos menos vendidos
@@ -201,7 +250,7 @@ CREATE OR ALTER PROCEDURE Reportes.ProductosMenosVendidosEnElMesXML
 AS
 BEGIN
  --   DECLARE @fechaHoy DATE = GETDATE();
-    DECLARE @fechaHoy DATE = '2019-02-01';
+    DECLARE @fechaHoy DATE = '2019-02-01'; --Seteo la fecha, porque no hay facturas insertadas durante este 2024
 
     SELECT TOP 5
         p.nombreProd AS 'Producto',
@@ -222,7 +271,8 @@ BEGIN
 END;
 GO
 
---8) 
+
+--8) Reporte de Total vendido para una fecha y sucursal dada
 CREATE OR ALTER PROCEDURE Reportes.TotalAcumuladoVentasParaUnaLocalidadYFechaXML
     @Fecha DATE,          -- Fecha de las ventas
     @Localidad VARCHAR(25)  -- Localidad de la sucursal

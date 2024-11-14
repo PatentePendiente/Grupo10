@@ -10,16 +10,14 @@ Grupo 10 sqLite, Integrantes:
 
 INDICE: 
 1) Creacion de usuario y sede de permisos para el responsable de importar archivos
-2) Creacion del login y usuario para el responsable de crear los reportesXSLX
-3) Creacion del login y usuario para el cajero
-4) Creacion del login, usuario y rol para el supervisor
-5) Creacion de stored procedure para crear una nota de credito
-6) Concedemos permiso de ejecución del SP crearNotaCredito al rol de Supervisor
+2) Creacion del login para el supervisor
+3) Creacion del usuario para el supervisor
+4) Creacion del rol para el supervisor
+5) Creación de stored procedure para crear una nota de crédito
+6) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 
 */
 
-USE Com5600G10
-GO
 
 
 --1) Creacion de usuario y sede de permisos para el responsable de importar archivos
@@ -46,72 +44,7 @@ GO
 GRANT EXECUTE ON SCHEMA::ImportadorDeArchivos TO UsuarioImportador;   
 GO
 
-
-
--- 2) Creacion del login y usuario para el responsable de crear los reportesXSLX
--- Creamos el login para el usuario de reportes
-IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioReportes')
-BEGIN
-    CREATE LOGIN UsuarioReportes WITH PASSWORD = 'reportes123';
-    PRINT 'Se creo el Login UsuarioReportes';
-END
-ELSE
-    PRINT 'El Login UsuarioReportes ya existe';
-GO
-
--- Creamos el usuario de reportes
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'UsuarioReportes')
-BEGIN
-    CREATE USER UsuarioReportes FOR LOGIN UsuarioReportes;
-END
-ELSE
-    PRINT 'El usuario UsuarioReportes ya existe en la base de datos.';
-
---Conceder permisos para la creacion de reportes
-GRANT EXECUTE ON SCHEMA::Reportes TO UsuarioReportes;
-GO
-
-
-
--- 3) Creacion del login y usuario para el cajero
--- Creamos el login para el usuario de caja
-IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioCaja')
-BEGIN
-    CREATE LOGIN UsuarioCaja WITH PASSWORD = 'caja123';
-    PRINT 'Se creo el Login UsuarioCaja';
-END
-ELSE
-    PRINT 'El Login UsuarioCaja ya existe';
-
--- Creamos el usuario de caja
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'UsuarioCaja')
-BEGIN
-    CREATE USER UsuarioCaja FOR LOGIN UsuarioCaja;
-END
-ELSE
-    PRINT 'El usuario UsuarioCaja ya existe en la base de datos.';
-GO
-
--- Concedemos permisos al cajero al schema Cajero
-GRANT EXECUTE ON SCHEMA::Cajero TO UsuarioCaja;
--- Concedemos permisos al cajero para consultar la API de dolar
-GRANT EXECUTE ON ImportadorDeArchivos.consultarDolarAPI TO UsuarioCaja;
--- Concedemos los permisos necesarios al cajero para que el stored procedure consultarDolarApi funcione correctamente
-USE master
-GO
-GRANT EXECUTE ON sys.sp_OACreate TO UsuarioCaja;
-GRANT EXECUTE ON sys.sp_OAMethod TO UsuarioCaja;
-GRANT EXECUTE ON sys.sp_OAGetProperty TO UsuarioCaja;
-GRANT EXECUTE ON sys.sp_OADestroy TO UsuarioCaja;
-
-USE Com5600G10
-GO
-
-
-
-
--- 4) Creacion del login, usuario y rol para el supervisor
--- Creamos el login para el supervisor
+-- 2) Creacion del login para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'SupervisorLogin')
 BEGIN
     CREATE LOGIN SupervisorLogin WITH PASSWORD = 'Supervisor123!';
@@ -119,7 +52,7 @@ BEGIN
 END
 GO
 
--- Creamos el usuario para el supervisor
+-- 3) Creacion del usuario para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorUser')
 BEGIN
     CREATE USER SupervisorUser FOR LOGIN SupervisorLogin;
@@ -127,7 +60,7 @@ BEGIN
 END
 GO
 
--- Creamos el rol para el supervisor
+-- 4) Creacion del rol para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'SupervisorRol')
 BEGIN
     CREATE ROLE SupervisorRol;
@@ -137,53 +70,53 @@ END
 GO
 
 
-
-
--- 5) Creacion de stored procedure para crear una nota de credito
-CREATE OR ALTER PROCEDURE INV.crearNotaCredito
-    @nroFactura CHAR(11),
-    @idProducto INT,
+-- 5) Creación de stored procedure para crear una nota de crédito
+CREATE OR ALTER PROCEDURE INV.CrearNotaCredito
+    @idFactura CHAR(11),
+    @nombreProducto VARCHAR(256),
     @tipoNota CHAR(1) -- 'P': 'Producto' o 'V': 'Valor'
 AS
 BEGIN
-    DECLARE @precio DECIMAL(10, 2);
-
-	-- Verificamos si la factura existe
-	IF NOT EXISTS (SELECT 1 FROM INV.Factura WHERE nroFactura = @nroFactura)
-	BEGIN
-		RAISERROR('La factura no existe.', 16, 1);
-		RETURN;
-	END
-
-	-- Verificamos si la factura no esta perdiente de pago
-	IF EXISTS (SELECT 1 FROM INV.Factura WHERE nroFactura = @nroFactura AND regPago = 'Pendiente de Pago')
-	BEGIN
-		RAISERROR('La factura está pendiente de pago.', 16, 1);
-		RETURN;
-	END
-
-	-- Verificamos si el producto pertenece a la factura
-    SELECT @precio = dv.precio
-    FROM INV.DetalleVenta dv
-    WHERE dv.nroFactura = @nroFactura AND dv.idProducto = @idProducto;
-
-    IF @precio IS NULL
+    -- Verificar si el usuario tiene el rol de Supervisor
+    IF IS_ROLEMEMBER('SupervisorRol') = 0
     BEGIN
-        RAISERROR('El producto no corresponde a la factura.', 16, 1);
+        PRINT 'Solo los Supervisores pueden crear una nota de crédito.'
         RETURN;
     END
 
-    -- Insertamos la nota de crédito
-    INSERT INTO INV.NotaCredito (idFactura, idProducto, tipoNotaCredito, monto, Fecha)
-    VALUES (@nroFactura, @idProducto, @tipoNota, @precio, GETDATE());
+    -- Verificar si la factura existe y si el producto es válido y pertenece a la factura
+    DECLARE @idProducto INT, @monto DECIMAL(6,2);
+
+    IF NOT EXISTS (SELECT 1 FROM INV.Factura WHERE idFactura = @idFactura AND regPago <> 'Pendiente de Pago')
+    BEGIN
+        PRINT 'La factura no existe o está pendiente de pago.'
+        RETURN;
+    END
+
+    SELECT @idProducto = p.idProd, @monto = p.precioArs
+    FROM PROD.Producto p
+    INNER JOIN INV.DetalleVenta dv ON dv.idProducto = p.idProd
+    WHERE dv.idFactura = @idFactura AND p.nombreProd = @nombreProducto;
+
+    IF @idProducto IS NULL
+    BEGIN
+        PRINT 'El producto no corresponde a la factura.'
+        RETURN;
+    END
+
+    -- Insertar la nota de crédito
+    INSERT INTO NotaCredito (idFactura, idProducto, tipoNotaCredito, monto)
+    VALUES (@idFactura, @idProducto, @tipoNota, @monto);
 
     PRINT 'Nota de crédito creada exitosamente.';
-END;
+END
 GO
 
 
--- 6) Concedemos permiso de ejecución del SP crearNotaCredito al rol de Supervisor
+-- 6) Conceder permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 GRANT EXECUTE ON INV.CrearNotaCredito TO SupervisorRol;
+
+
 
 
 

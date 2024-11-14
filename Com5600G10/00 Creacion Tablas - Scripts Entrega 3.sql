@@ -54,6 +54,7 @@ IF NOT EXISTS (
 ELSE
     PRINT 'El esquema HR ya existe.';
 GO
+
 --2) Esquema INV
 IF NOT EXISTS (
     SELECT schema_name
@@ -64,6 +65,7 @@ IF NOT EXISTS (
 ELSE
     PRINT 'El esquema INV ya existe.';
 GO
+
 --3) Esquema PROD
 IF NOT EXISTS (
     SELECT schema_name
@@ -74,6 +76,7 @@ IF NOT EXISTS (
 ELSE
     PRINT 'El esquema PROD ya existe.';
 GO
+
 --4) Esquema ImportadorDeArchivos
 IF NOT EXISTS (
     SELECT schema_name
@@ -84,6 +87,7 @@ IF NOT EXISTS (
 ELSE
     PRINT 'El esquema ImportadorDeArchivos ya existe.';
 GO
+
 --5) Esquema Reportes
 IF NOT EXISTS (
     SELECT schema_name
@@ -140,7 +144,7 @@ BEGIN
     CREATE TABLE Prod.Producto (
             idProd INT PRIMARY KEY IDENTITY(1,1),
 			lineaDeProducto VARCHAR(64),
-			nombreProd NVARCHAR(256),
+			nombreProd VARCHAR(150),
 			precioArs DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica 
 			precioUsd DECIMAL(6,2) null default 0, --Valor nulo cuando no aplica
 			unidadRef VARCHAR(64),		

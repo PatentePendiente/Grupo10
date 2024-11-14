@@ -15,8 +15,9 @@ INDICE:
 4) Test de SP para el borrado logico de empleado
 5) Test de insercion individual y control de duplicados de producto
 
-Nota: Para que ejecutar estos test hay que ejecutar 03 e importar los productos
-porque utilizo productos del catalogo como testing
+
+Nota: Para que ejecutar estos test hay que ejecutar "04 Testing Importacion - Entrega 4" e importar los 
+productos de las sucursales porque utilizo estos productos del catalogo como testing
 6) Test de crear detalles de venta y luego confirmar la venta
 7) Test de crear detalles de venta y luego cancelar la venta
 
@@ -24,6 +25,8 @@ porque utilizo productos del catalogo como testing
 TEST QUE DEBERIAN PRODUCIR FALLO:
 8) Producto que no existe
 9) Empleado no registrado en el sistema
+10) Borrado de un Empleado que no existe
+11) Borrado de un producto que no existe
 */
 
 
@@ -114,7 +117,7 @@ EXEC ImportadorDeArchivos.InsertarProducto
     @unidadRef = '1 unidad';
 GO
 
---traigo todos los ids de producto y compruebo que me muestre un unico registro
+--traigo todos los ids de producto
 SELECT * FROM PROD.Producto
 WHERE nombreProd = 'productoDeTest'
 GO
@@ -135,7 +138,13 @@ GO
 
 
 
+
 /****** TESTING DE FACTURACIONES  CON CONFIRMACION******/
+/*
+NOTA: Para que ejecutar los test: 6 y 7, hay que ejecutar previamente "04 Testing Importacion - Entrega 4" e 
+importar los productos porque utilizo productos del catalogo como testing
+*/
+
 --6) Test de crear detalles de venta y luego confirmar la venta
 --insercion sucursal de test
 DECLARE @idSucursal INT;
@@ -364,6 +373,15 @@ EXEC Cajero.AgregarDetalleVenta
 GO
 --ERROR que muestra: El legajo del cajero 1122 no se encuentra registrado
 
+--10) Borrado de un Empleado que no existe
+EXEC ImportadorDeArchivos.BorrarEmpleado 10000 --legajo que no existe
+GO
+--ERROR QUE MUESTRA: No se encontró el empleado con el legajo proporcionado 10000
+
+--11) Borrado de un producto que no existe
+EXEC ImportadorDeArchivos.BorrarProducto 'Producto Inexistente, que debe fallar'  --producto que no existe
+GO
+--ERROR QUE MUESTRA: No se encontró el producto que se desea borrar Producto Inexistente, que debe fallar
 
 
 --Por ultimo eliminar los registros de testing:
