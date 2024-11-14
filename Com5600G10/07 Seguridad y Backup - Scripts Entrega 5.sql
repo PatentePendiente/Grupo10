@@ -18,6 +18,8 @@ INDICE:
 
 */
 
+USE Com5600G10
+GO
 
 
 --1) Creacion de usuario y sede de permisos para el responsable de importar archivos
@@ -90,6 +92,22 @@ ELSE
     PRINT 'El usuario UsuarioCaja ya existe en la base de datos.';
 GO
 
+-- Concedemos permisos al cajero al schema Cajero
+GRANT EXECUTE ON SCHEMA::Cajero TO UsuarioCaja;
+-- Concedemos permisos al cajero para consultar la API de dolar
+GRANT EXECUTE ON ImportadorDeArchivos.consultarDolarAPI TO UsuarioCaja;
+-- Concedemos los permisos necesarios al cajero para que el stored procedure consultarDolarApi funcione correctamente
+USE master
+GO
+GRANT EXECUTE ON sys.sp_OACreate TO UsuarioCaja;
+GRANT EXECUTE ON sys.sp_OAMethod TO UsuarioCaja;
+GRANT EXECUTE ON sys.sp_OAGetProperty TO UsuarioCaja;
+GRANT EXECUTE ON sys.sp_OADestroy TO UsuarioCaja;
+
+USE Com5600G10
+GO
+
+
 
 
 -- 4) Creacion del login, usuario y rol para el supervisor
@@ -120,53 +138,52 @@ GO
 
 
 
+
 -- 5) Creacion de stored procedure para crear una nota de credito
-CREATE OR ALTER PROCEDURE INV.CrearNotaCredito
-    @idFactura CHAR(11),
-    @nombreProducto VARCHAR(256),
+CREATE OR ALTER PROCEDURE INV.crearNotaCredito
+    @nroFactura CHAR(11),
+    @idProducto INT,
     @tipoNota CHAR(1) -- 'P': 'Producto' o 'V': 'Valor'
 AS
 BEGIN
-    -- Verificamos si el usuario tiene el rol de Supervisor
-    IF IS_ROLEMEMBER('SupervisorRol') = 0
+    DECLARE @precio DECIMAL(10, 2);
+
+	-- Verificamos si la factura existe
+	IF NOT EXISTS (SELECT 1 FROM INV.Factura WHERE nroFactura = @nroFactura)
+	BEGIN
+		RAISERROR('La factura no existe.', 16, 1);
+		RETURN;
+	END
+
+	-- Verificamos si la factura no esta perdiente de pago
+	IF EXISTS (SELECT 1 FROM INV.Factura WHERE nroFactura = @nroFactura AND regPago = 'Pendiente de Pago')
+	BEGIN
+		RAISERROR('La factura está pendiente de pago.', 16, 1);
+		RETURN;
+	END
+
+	-- Verificamos si el producto pertenece a la factura
+    SELECT @precio = dv.precio
+    FROM INV.DetalleVenta dv
+    WHERE dv.nroFactura = @nroFactura AND dv.idProducto = @idProducto;
+
+    IF @precio IS NULL
     BEGIN
-        PRINT 'Solo los Supervisores pueden crear una nota de crédito.'
-        RETURN;
-    END
-
-    -- Verificamos si la factura existe y si el producto es válido y pertenece a la factura
-    DECLARE @idProducto INT, @monto DECIMAL(6,2);
-
-    IF NOT EXISTS (SELECT 1 FROM INV.Factura WHERE idFactura = @idFactura AND regPago <> 'Pendiente de Pago')
-    BEGIN
-        PRINT 'La factura no existe o está pendiente de pago.'
-        RETURN;
-    END
-
-    SELECT @idProducto = p.idProd, @monto = p.precioArs
-    FROM PROD.Producto p
-    INNER JOIN INV.DetalleVenta dv ON dv.idProducto = p.idProd
-    WHERE dv.idFactura = @idFactura AND p.nombreProd = @nombreProducto;
-
-    IF @idProducto IS NULL
-    BEGIN
-        PRINT 'El producto no corresponde a la factura.'
+        RAISERROR('El producto no corresponde a la factura.', 16, 1);
         RETURN;
     END
 
     -- Insertamos la nota de crédito
-    INSERT INTO NotaCredito (idFactura, idProducto, tipoNotaCredito, monto)
-    VALUES (@idFactura, @idProducto, @tipoNota, @monto);
+    INSERT INTO INV.NotaCredito (idFactura, idProducto, tipoNotaCredito, monto, Fecha)
+    VALUES (@nroFactura, @idProducto, @tipoNota, @precio, GETDATE());
 
     PRINT 'Nota de crédito creada exitosamente.';
-END
+END;
 GO
 
 
 -- 6) Concedemos permiso de ejecución del SP crearNotaCredito al rol de Supervisor
 GRANT EXECUTE ON INV.CrearNotaCredito TO SupervisorRol;
-
-
 
 
 
