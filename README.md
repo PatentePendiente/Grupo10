@@ -1,5 +1,7 @@
 Grupo 10 - Com5600G10
+
 Documentación de Instalación
+
 Entorno Instalado:
   ● Software
     ○ Sistema Operativo: Windows 10 Home
