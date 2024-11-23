@@ -41,19 +41,19 @@ GO
 
 
 --4) Test de Reportes.CantidadProductosVendidosEntreDosFechas
--- Reporte de ventas desde inicio de 2019 hasta la mitad del año 2019
+-- Reporte de ventas desde inicio de 2019 hasta la mitad del aÃ±o 2019
 EXEC Reportes.CantidadProductosVendidosEntreDosFechasXML '2019-01-01', '2019-06-30';
 GO
 
 
 --5) Test de Reportes.ProductosVendidosPorSucursalEntreDosFechas
--- Reporte de ventas por sucursal desde inicio de 2019 hasta la mitad del año 2019
+-- Reporte de ventas por sucursal desde inicio de 2019 hasta la mitad del aÃ±o 2019
 EXEC Reportes.ProductosVendidosPorSucursalEntreDosFechasXML '2019-01-01', '2019-06-30';
 GO
 
 
 --6) Test de Reportes.ProductosMasVendidosPorSemanaEnElMesXML
--- Muestra las mayores cinco ventas para cada semana del mes y año dados 
+-- Muestra las mayores cinco ventas para cada semana del mes y aÃ±o dados 
 EXEC Reportes.ProductosMasVendidosPorSemanaEnElMesXML @Mes = 1, @Anio = 2019
 GO
 
