@@ -13,7 +13,7 @@ INDICE:
 ID Factura Tipo de FacturaCiudad Tipo de clienteGenero Linea de producto Producto Precio Unitario Cantidad Fecha hora Medio de Pago Empleado Sucursal
 
 2) Reporte Mensual en XML
-Pedido: Mensual: ingresando un mes y aÒo determinado mostrar el total facturado por dÌas de la semana, incluyendo s·bado y domingo.
+Pedido: Mensual: ingresando un mes y a√±o determinado mostrar el total facturado por d√≠as de la semana, incluyendo s√°bado y domingo.
 
 3) Reporte trimestral de los anteriores 3 meses a la fecha actual en XML
 Pedido: mostrar el total facturado por turnos de trabajo por mes.
@@ -26,8 +26,8 @@ ordenado de mayor a menor.
 Pedido: Por rango de fechas: ingresando un rango de fechas a demanda, debe poder mostrar la cantidad de productos vendidos en ese 
 rango por sucursal, ordenado de mayor a menor.
 
-6) Reporte de las mayores cinco ventas para cada semana del mes y aÒo dados 
-Pedido: Mostrar los 5 productos m·s vendidos en un mes, por semana
+6) Reporte de las mayores cinco ventas para cada semana del mes y a√±o dados 
+Pedido: Mostrar los 5 productos m√°s vendidos en un mes, por semana
 
 7) Reporte de los 5 productos menos vendidos
 Pedido: Mostrar los 5 productos menos vendidos en el mes.
@@ -43,7 +43,7 @@ GO
 CREATE OR ALTER PROCEDURE Reportes.VentasXML
 AS
 BEGIN
-    -- SelecciÛn de datos en formato XML
+    -- Selecci√≥n de datos en formato XML
     SELECT 
         f.nroFactura AS [ID_factura],
         f.tipoFac AS [Tipo_de_factura],
@@ -83,7 +83,7 @@ CREATE OR ALTER PROCEDURE Reportes.MensualXML
     @Anio INT
 AS
 BEGIN
-	SET LANGUAGE Spanish; -- Cambio de idioma a espaÒol para que los dias de la semana se muestren en espaÒol
+	SET LANGUAGE Spanish; -- Cambio de idioma a espa√±ol para que los dias de la semana se muestren en espa√±ol
 
     SELECT 
         DATENAME(WEEKDAY, f.fecha) AS DiaSemana,
@@ -107,7 +107,7 @@ GO
 CREATE OR ALTER PROCEDURE Reportes.UltimosTresMesesPorTurnosXML
 AS
 BEGIN
-	SET LANGUAGE Spanish; -- Cambio de idioma a espaÒol para que los meses se muestren en espaÒol
+	SET LANGUAGE Spanish; -- Cambio de idioma a espa√±ol para que los meses se muestren en espa√±ol
 
 	DECLARE @FechaActual DATE = '2019-04-10'; -- Fecha 2019 porque no hay reportes actuales de 2014 **eliminar**
     --DECLARE @FechaActual DATE = GETDATE(); -- Fecha hoy
@@ -181,7 +181,7 @@ BEGIN
     INNER JOIN 
         HR.Empleado e ON f.idEmp = e.legajo
     INNER JOIN 
-        HR.Sucursal s ON e.idSuc = s.nroSucursal -- AquÌ se usa idSuc de Empleado
+        HR.Sucursal s ON e.idSuc = s.nroSucursal -- Aqu√≠ se usa idSuc de Empleado
     WHERE 
         f.fecha BETWEEN @FechaInicio AND @FechaFin
     GROUP BY 
@@ -196,7 +196,7 @@ GO
 --6) Reporte de los 5 productos mas vendido para el mes de una fecha dada
 CREATE OR ALTER PROCEDURE Reportes.ProductosMasVendidosPorSemanaEnElMesXML
     @mes INT,   -- mes en cuestion
-    @anio INT   -- aÒo del mes en cuestion
+    @anio INT   -- a√±o del mes en cuestion
 AS
 BEGIN
     -- Uso de una tabla temporal para almacenar los resultados intermedios
