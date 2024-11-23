@@ -8,78 +8,102 @@ Grupo 10 sqLite, Integrantes:
 -VARELA, DANIEL MARIANO			-- 40388978
 
 Asunto: Testing de Importacion de archivos
+
 INDICE:
-1) Ejecucion de ImportadorDeArchivos.importarProductosImportados
-2) Ejecucion de ImportadorDeArchivos.importarSucursales
-3) Ejecucion de ImportadorDeArchivos.importarCatalogo
-4) Ejecucion de ImportadorDeArchivos.importarProductosAccesoriosElectronicos
-5) Ejecucion de ImportadorDeArchivos.importarEmpleados
+Ejecucion Intermedia de DBA.InsertarClientes
+1) Ejecucion de ImportadorDeArchivos.importarSucursales
+2) Ejecucion de ImportadorDeArchivos.importarEmpleados
+3) Ejecucion de ImportadorDeArchivos.importarProductosImportados
+4) Ejecucion de ImportadorDeArchivos.importarCatalogo
+5) Ejecucion de ImportadorDeArchivos.importarProductosAccesoriosElectronicos
 6) Ejecucion de ImportadorDeArchivos.importarVentas
-
-
 */
 
 USE Com5600G10
 GO
---1) Importado de Productos_importados.xlsx
--- Ejecutar el procedimiento almacenado para importar los productos
-EXEC ImportadorDeArchivos.importarProductosImportados 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\Productos_importados.xlsx';
+
+--/--
+
+SELECT * FROM HR.Cliente
 GO
---SELECT * FROM PROD.Producto;
--- DROP PROCEDURE ImportadorDeArchivos.importarProductosImportados;
+--2) Ejecucion de SP para insercion de los 4 tipos de clientes
+EXEC DBA.InsertarClientes
+GO
 
+SELECT * FROM HR.Cliente
+GO
 
---2) Importado de Sucursales
--- Ejecutar el procedimiento almacenado para importar las sucursales
+--/--
+
+--1) Importado de Sucursales
+SELECT * FROM HR.Sucursal -- SE MUESTRA VACIA
+GO
+
 EXEC ImportadorDeArchivos.importarSucursales 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Informacion_complementaria.xlsx';
 GO
---SELECT * FROM HR.Sucursal;
--- DROP PROCEDURE ImportadorDeArchivos.importarSucursales;
 
-
---3) Carga de Catalogo.csv
--- Ejecutar el procedimiento almacenado para importar el catálogo
-EXEC ImportadorDeArchivos.importarCatalogo 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\catalogo.csv';
+SELECT * FROM HR.Sucursal --SE MUESTRA LLENA
 GO
---select * from PROD.Producto
 
---DROP PROCEDURE PROD.importarCatalogo;
+--/--
 
---4) Importado de Productos_importados.xlsx
--- Ejecutar el procedimiento almacenado para importar los productos
-EXEC ImportadorDeArchivos.importarProductosAccesoriosElectronicos 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\Electronic accessories.xlsx';
+--2) Importado de Empleados
+SELECT * FROM HR.Empleado -- SE MUESTRA VACIA
 GO
---SELECT * FROM PROD.Producto;
 
---drop procedure PROD.importarProductosAccesoriosElectronicos
-
-
---5) Importado de Empleados
---Ejecutar el procedimiento almacenado para importar los productos
 EXEC ImportadorDeArchivos.importarEmpleados 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Informacion_complementaria.xlsx';
 GO
---SELECT * FROM HR.Empleado;
 
---drop procedure PROD.importarEmpleados
+SELECT * FROM HR.Empleado -- SE MUESTRA VACIA
+GO
 
+--/--
+
+SELECT * FROM PROD.Producto -- SE MUESTRA VACIA
+GO
+
+--3) Importado de Productos_importados.xlsx
+EXEC ImportadorDeArchivos.importarProductosImportados 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\Productos_importados.xlsx';
+GO
+
+--4) Carga de Catalogo.csv
+EXEC ImportadorDeArchivos.importarCatalogo 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\catalogo.csv';
+GO
+
+--5) Importado de Productos_importados.xlsx
+EXEC ImportadorDeArchivos.importarProductosAccesoriosElectronicos 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Productos\Electronic accessories.xlsx';
+GO
+
+SELECT * FROM PROD.Producto -- SE MUESTRA LLENA
+GO
+
+--/--
+SELECT * FROM INV.Factura -- SE MUESTRA VACIA
+GO
+
+SELECT * FROM INV.DetalleVenta -- SE MUESTRA VACIA
+GO
 
 --6) Importado de Ventas
 EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
 GO
--- DROP PROCEDURE PROD.importarCatalogo;
--- DROP PROCEDURE INV.importarVentas;
 
---Muestreo de tablas y como se cargaron los datos
-select * from HR.sucursal
-select * from HR.Empleado
---La tabla cliente se cargo en 02 - ttesting de ABM ya que se utiliza tambien ahi
-select * from HR.Cliente
-select * from PROD.Producto
-select * from INV.Factura
-select * from INV.DetalleVenta
+SELECT * FROM INV.Factura -- SE MUESTRA LLENA
+GO
 
+SELECT * FROM INV.DetalleVenta -- SE MUESTRA LLENA
+GO
 
+--SE VUELVE A EJECUTAR PARA VER Y CONTROLAR QUE NO SE DUPLIQUEN ARCHIVOS
+--7) Importado de Ventas
+EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv'
+GO
 
+SELECT * FROM INV.Factura -- SE MUESTRA LLENA Y SIN DUPLICADOS
+GO
+
+SELECT * FROM INV.DetalleVenta -- SE MUESTRA LLENA Y SIN DUPLICADOS
+GO
 
 
 

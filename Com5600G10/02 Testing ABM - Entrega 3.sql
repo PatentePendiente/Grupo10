@@ -9,7 +9,7 @@ Grupo 10 sqLite, Integrantes:
 
 Asunto: Testing de Importacion de archivos
 INDICE:
-1) Ejecucion de SP para consultar Api
+1) Ejecucion de SP para crear tabla de dolares
 2) Ejecucion de SP para insercion de los 4 tipos de clientes
 3) Test de SP para el borrado logico de producto
 4) Test de SP para el borrado logico de empleado
@@ -32,9 +32,11 @@ TEST QUE DEBERIAN PRODUCIR FALLO:
 
 --1) Api de Dolar
 -- Ejecutar la consulta de precio Dolar
-DECLARE @valorDolarVenta DECIMAL(6,2);
-EXEC ImportadorDeArchivos.consultarDolarAPI @valorDolarVenta OUT;
-PRINT 'DOLAR COMPRA: ' + CAST(@valorDolarVenta AS VARCHAR);
+EXEC ImportadorDeArchivos.consultarDolarAPI
+GO
+
+SELECT * FROM DBA.PrecioDolar
+GO
 
 --2) Ejecucion de SP para insercion de los 4 tipos de clientes
 EXEC DBA.InsertarClientes

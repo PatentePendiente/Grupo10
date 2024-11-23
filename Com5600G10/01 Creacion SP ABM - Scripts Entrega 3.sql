@@ -28,7 +28,6 @@ GO
 
 --1) SP para api de dolar
 CREATE OR ALTER PROCEDURE ImportadorDeArchivos.consultarDolarAPI
-	@valorDolarCompra DECIMAL(6,2) OUT
 AS
 BEGIN
     -- Declarar variables
@@ -36,6 +35,22 @@ BEGIN
     DECLARE @Object INT;
     DECLARE @json TABLE(respuesta VARCHAR(MAX));
     DECLARE @respuesta VARCHAR(MAX);
+
+    -- Crear la tabla DBA.PrecioDolar si no existe
+    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES 
+                   WHERE TABLE_SCHEMA = 'DBA' 
+                   AND TABLE_NAME = 'PrecioDolar')
+    BEGIN
+        CREATE TABLE DBA.PrecioDolar (
+            Id INT IDENTITY(1,1) PRIMARY KEY,
+            Moneda CHAR(3),
+            Casa VARCHAR(16),
+            Nombre VARCHAR(16),
+            Compra DECIMAL(6, 2),
+            Venta DECIMAL(6, 2),
+            FechaActualizacion DATETIME2
+        );
+    END;
 
     -- Crear una instancia de objeto OLE
     EXEC sp_OACreate 'MSXML2.XMLHTTP', @Object OUT;
@@ -58,7 +73,22 @@ BEGIN
 
     -- Parsear la respuesta JSON y retornar los resultados
     DECLARE @datos VARCHAR(MAX) = (SELECT respuesta FROM @json);
-    SELECT @valorDolarCompra = compra FROM OPENJSON(@datos)
+    DECLARE @moneda CHAR(3);
+    DECLARE @casa VARCHAR(16);
+    DECLARE @nombre VARCHAR(16);
+    DECLARE @compra DECIMAL(6, 2);
+    DECLARE @venta DECIMAL(6, 2);
+    DECLARE @fechaActualizacion DATETIME2;
+
+    -- Extraer datos de la respuesta JSON
+    SELECT 
+        @moneda = moneda,
+        @casa = casa,
+        @nombre = nombre,
+        @compra = compra,
+        @venta = venta,
+        @fechaActualizacion = fechaActualizacion
+    FROM OPENJSON(@datos)
     WITH
     (
         [moneda] CHAR(3) '$.moneda',
@@ -69,8 +99,27 @@ BEGIN
         [fechaActualizacion] DATETIME2 '$.fechaActualizacion'
     ) WHERE casa LIKE 'oficial';
 
+    -- Verificar si ya existe un registro para la misma moneda y casa para no admitir duplicados, en tal caso solo actulizar
+    IF EXISTS (SELECT 1 FROM DBA.PrecioDolar WHERE Moneda = @moneda AND Casa = @casa)
+    BEGIN
+        -- Si existe, actualizar los datos
+        UPDATE DBA.PrecioDolar
+        SET 
+            Compra = @compra,
+            Venta = @venta,
+            FechaActualizacion = @fechaActualizacion
+        WHERE Moneda = @moneda AND Casa = @casa;
+    END
+    ELSE
+    BEGIN
+        -- Si no existe, insertar un nuevo registro
+        INSERT INTO DBA.PrecioDolar (Moneda, Casa, Nombre, Compra, Venta, FechaActualizacion)
+        VALUES (@moneda, @casa, @nombre, @compra, @venta, @fechaActualizacion);
+    END
 END;
 GO
+
+
 
 --2) SP para registrar los 4 tipos de clientes
 CREATE OR ALTER PROCEDURE DBA.InsertarClientes
@@ -216,29 +265,30 @@ CREATE OR ALTER PROCEDURE Cajero.AgregarDetalleVenta
     @legajoCajero INT -- Legajo del cajero (empleado)
 AS
 BEGIN
-	DECLARE @idProd INT;
+    DECLARE @idProd INT;
     DECLARE @nroFactura INT;
     DECLARE @idFactura CHAR(11);
     DECLARE @unidadRef VARCHAR(64);
-	DECLARE @cantRef DECIMAL(6,2);
-	DECLARE @unidad NVARCHAR(50);
+    DECLARE @cantRef DECIMAL(6,2);
+    DECLARE @unidad VARCHAR(50);
     DECLARE @precioUsd DECIMAL(6,2); -- Precio en USD
     DECLARE @precioArs DECIMAL(6,2); -- Precio en ARS
     DECLARE @precioEnLocal DECIMAL(9,2); -- Precio prod en pesos
     DECLARE @subTotalVendido DECIMAL(9,2); -- Precio final multiplicado por la cantidad comprada
+    DECLARE @valorDolarVenta DECIMAL(6,2);
 
-	--Validacion de que existe el nroLegajo
-	IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
-	BEGIN
-		RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
-		RETURN;
-	END
+    -- Validacion de que existe el nroLegajo
+    IF NOT EXISTS (SELECT 1 FROM HR.Empleado WHERE legajo = @legajoCajero)
+    BEGIN
+        RAISERROR ('El legajo del cajero %d no se encuentra registrado.', 16, 1, @legajoCajero);
+        RETURN;
+    END
 
     -- Paso 1: Buscar el precio del producto por nombre
     SELECT @precioUsd = precioUsd,
            @precioArs = precioArs,
            @unidadRef = unidadRef,
-		   @idProd = idProd
+           @idProd = idProd
     FROM Prod.Producto
     WHERE nombreProd = @nombreProducto;
 
@@ -259,14 +309,21 @@ BEGIN
     BEGIN
         -- Crear una nueva factura
         INSERT INTO INV.Factura (idEmp, fecha, hora, regPago)
-        VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'falta confirmacion'); 
+            VALUES (@legajoCajero, GETDATE(), CONVERT(TIME, GETDATE()), 'falta confirmacion'); 
         SET @nroFactura = SCOPE_IDENTITY(); -- Obtener el nro de factura recién creado
     END
 
-	--paso 3 consultar la api para conseguir el precio de dolar
-	DECLARE @valorDolarVenta DECIMAL(6,2);
-	EXEC ImportadorDeArchivos.consultarDolarAPI @valorDolarVenta OUT;
-	PRINT 'DOLAR COMPRA: ' + CAST(@valorDolarVenta AS VARCHAR);
+    -- Paso 3: Leer el valor del dolar desde la tabla DBA.PrecioDolar
+    SELECT @valorDolarVenta = Venta
+    FROM DBA.PrecioDolar
+    WHERE Moneda = 'USD' AND Casa = 'oficial';
+
+    -- Validar que se obtuvo el valor del dolar
+    IF @valorDolarVenta IS NULL
+    BEGIN
+        RAISERROR ('No se pudo obtener el valor del dolar desde la tabla PrecioDolar.', 16, 1);
+        RETURN;
+    END
 
     -- Paso 4: Determinar el precio final en base a la moneda
     IF @precioUsd > 0 -- Si el precio está en USD
@@ -274,8 +331,8 @@ BEGIN
     ELSE
         SET @precioEnLocal = @precioArs;
 
-	-- Paso 5: Control de unidades y estandarizar a Gr
-	SET @cantRef = 
+    -- Paso 5: Control de unidades y estandarizar a Gr
+    SET @cantRef = 
     CASE 
         WHEN @unidadRef LIKE 'kg' THEN 
             1000
@@ -288,7 +345,7 @@ BEGIN
     END;
 
     -- Paso 6: Registrar nuevo detalle de venta
-	SET @subTotalVendido = (@precioEnLocal * @cantidadEnGr) / @cantRef
+    SET @subTotalVendido = (@precioEnLocal * @cantidadEnGr) / @cantRef
 
     INSERT INTO INV.DetalleVenta (idProducto, nroFactura, subTotal, cant, precio)
     SELECT p.idProd, @nroFactura, @subTotalVendido, @cantidadEnGr, @precioEnLocal
@@ -297,6 +354,7 @@ BEGIN
 
 END
 GO
+
 
 
 -- 7. Procedimiento para confirmar la venta

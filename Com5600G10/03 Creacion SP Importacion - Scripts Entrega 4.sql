@@ -134,7 +134,7 @@ BEGIN
     CREATE TABLE #tablaImportada (
         id VARCHAR(MAX),
         categoria VARCHAR(MAX),
-        nombre NVARCHAR(MAX),
+        nombre VARCHAR(MAX),
         precio VARCHAR(MAX),
         precioReferencia VARCHAR(MAX),
         unidad VARCHAR(MAX),

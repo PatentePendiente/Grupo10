@@ -9,18 +9,63 @@ Grupo 10 sqLite, Integrantes:
 
 
 INDICE: 
-1) SP para ver empleados desencriptados
+1) Mostramos como se ve la tabla Empleado encriptada después de la encriptación
+2) Ejecutamos el SP mostrarEmpleados para ver los empleados desencriptados
+3) Vemos si se insertan correctamente en la tabla Empleado los valores encriptados desde el documento EXCEL
+4) Vemos si el borrado logico de un empleado se hace correctamente después de la encriptacion
 
 */
 
+USE Com5600G10
+GO
 
 
 
+-- 1) Mostramos como se ve la tabla Empleado encriptada
+SELECT * FROM HR.Empleado;
 
 
---1) Ejecucion de sp para ver empleados desencriptados
+
+-- 2) Ejecutamos el SP mostrarEmpleados para ver los empleados desencriptados
 EXEC DBA.mostrarEmpleados
 GO
+
+
+
+-- 3) Vemos si se insertan correctamente en la tabla Empleado los valores encriptados desde el documento EXCEL
+
+-- Primero borramos algunos valores de la tabla Empleado
+UPDATE HR.Empleado
+SET 
+    nombre = NULL,
+    apellido = NULL,
+    dni = NULL,
+    direccion = NULL,
+    mailPersonal = NULL,
+    mailEmpresa = NULL;
+
+-- Miramos la tabla Empleado
+SELECT * FROM HR.Empleado;
+
+-- Si la modificacion SP de importacion de empleados se hizo correctamente,
+-- Los datos que fueron eliminados se deberian actualizar con los que son leidos del documento.
+EXEC ImportadorDeArchivos.importarEmpleados 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Informacion_complementaria.xlsx';
+-- EXEC ImportadorDeArchivos.importarEmpleados 'C:\Users\JuanD\OneDrive\Escritorio\bbdda\projecto_github\Com5600G10\TP_integrador_Archivos\Informacion_complementaria.xlsx';
+
+-- Observamos si los valores se insertaron de manera encriptada en la tabla Empleado
+EXEC DBA.mostrarEmpleados
+GO
+
+
+
+-- 4) Vemos si el borrado logico de un empleado se hace correctamente después de la encriptacion
+EXEC ImportadorDeArchivos.borrarEmpleado 257020;
+
+EXEC DBA.mostrarEmpleados;
+GO
+
+-- Revertimos el borrado logico del empleado
+UPDATE HR.Empleado SET fechaBorrado = NULL WHERE legajo = 257020;
 
 
 
