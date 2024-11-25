@@ -10,10 +10,9 @@ Grupo 10 sqLite, Integrantes:
 
 INDICE: 
 1) Ver Users
-2) Test del Usuario: Importador de Archivos
-3) Test del Usuario: ReportesXML
-4) Test del Usuario: Cajero
-5) Test del Usuario: Supervisor y de INV.crearNotaCredito
+2) Test del Usuario: ReportesXML
+3) Test del Usuario: Cajero
+4) Test del Usuario: Supervisor y de INV.crearNotaCredito
 */
 
 USE Com5600G10
@@ -32,41 +31,9 @@ ORDER BY
     dp.name;
 GO
 
-/*
---2) Test del Usuario: Importador de Archivos
-EXECUTE AS USER = 'UsuarioImportador';
-SELECT USER_NAME() AS UsuarioActual;
-GO
-
-revert
 
 
--- Ejecucion de un sp que si puede
-BEGIN TRY
-    PRINT 'El procedimiento ImportadorDeArchivos.importarVentas fue ejecutado correctamente por el UsuarioImportador';
-	EXEC ImportadorDeArchivos.importarVentas 'C:\Users\user\Desktop\Com5600G10\TP_integrador_Archivos\Ventas_registradas.csv';
-END TRY
-BEGIN CATCH
-    PRINT 'Error al ejecutar ImportadorDeArchivos.importarVentas: ' + ERROR_MESSAGE();
-END CATCH;
-GO
-
-/*
--- Ejecucion de un sp que tiene permisos
-BEGIN TRY
-    EXEC ImportadorDeArchivos.procedimientoNoPermitido; -- Suponiendo que este procedimiento no debe existir o no debe ser ejecutado por el usuario
-    PRINT 'El procedimiento ImportadorDeArchivos.procedimientoNoPermitido fue ejecutado correctamente, lo cual no es esperado';
-END TRY
-BEGIN CATCH
-    PRINT 'Error al ejecutar ImportadorDeArchivos.procedimientoNoPermitido (como se esperaba): ' + ERROR_MESSAGE();
-END CATCH;
-GO*/
-
-REVERT;
-*/
-
-
---3) Test del Usuario: ReportesXML
+--2) Test del Usuario: ReportesXML
 EXECUTE AS USER = 'UsuarioReportes';
 SELECT USER_NAME() AS UsuarioActual;
 GO
@@ -84,7 +51,7 @@ REVERT
 
 
 
---4) Test del Usuario: Cajero
+--3) Test del Usuario: Cajero
 EXECUTE AS USER = 'UsuarioCaja';
 SELECT USER_NAME() AS UsuarioActual;
 GO
@@ -108,7 +75,7 @@ SELECT USER_NAME() AS UsuarioActual;
 
 
 
---5) Test de INV.crearNotaCredito para valor de producto
+--4) Test de INV.crearNotaCredito para valor de producto
 EXECUTE AS USER = 'UsuarioSupervisor';
 SELECT USER_NAME() AS UsuarioActual;
 GO

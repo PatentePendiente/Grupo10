@@ -9,58 +9,18 @@ Grupo 10 sqLite, Integrantes:
 
 
 INDICE: 
-1) Creacion de usuario y sede de permisos para el responsable de importar archivos
-2) Creacion del login y usuario para el responsable de crear los reportesXSLX
-3) Creacion del login, usuario y rol para los cajeros
-4) Creacion de SP para crear una nota de credito
-5) Creacion del login, usuario y rol para el supervisor
+1) Creacion del login y usuario para el responsable de crear los reportes
+2) Creacion del login, usuario y rol para los cajeros
+3) Creacion de SP para crear una nota de credito
+4) Creacion del login, usuario y rol para el supervisor
 */
 
 
 USE Com5600G10
 GO
 
-/*
---SELECT USER_NAME() AS UsuarioActual;
--- 1) Creacion de Login y Usuario en la base de datos
-IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioImportador')
-BEGIN
-    CREATE LOGIN UsuarioImportador WITH PASSWORD = 'importador123';
-    PRINT 'Se creó el Login UsuarioImportador';
-END
-ELSE
-    PRINT 'El Login UsuarioImportador ya existe';
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'UsuarioImportador')
-BEGIN
-    CREATE USER UsuarioImportador FOR LOGIN UsuarioImportador;
-    PRINT 'Se creó el usuario UsuarioImportador en la base de datos Com5600G10';
-END
-ELSE
-    PRINT 'El usuario UsuarioImportador ya existe en la base de datos';
-GO
-
---Conceder permisos para ejecutar los sp del esquema ImportadorDeArchivos
-GRANT EXECUTE ON SCHEMA::ImportadorDeArchivos TO UsuarioImportador;
-GO
-
---Conceder permisos completos en la base de datos para administracion y que pueda cargar los archivos del escrito
-EXEC sp_addrolemember 'db_owner', 'UsuarioImportador';
-GO
-
---Conceder permisos para carga masiva en el servidor (base de datos master)
-USE master;
-GO
-GRANT ADMINISTER BULK OPERATIONS TO UsuarioImportador;
-GO
-
-USE Com5600G10;
-GO
-*/
-
-
--- 2) Creacion del login y usuario para el responsable de crear los reportesXSLX
+-- 1) Creacion del login y usuario para el responsable de crear los reportes
 -- Creamos el login para el usuario de reportes
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioReportes')
 BEGIN
@@ -86,7 +46,7 @@ GO
 
 
 
--- 3) Creacion del login y usuario para el cajero
+-- 2) Creacion del login y usuario para el cajero
 -- Creamos el login para el usuario de caja
 USE Com5600G10
 GO
@@ -127,7 +87,7 @@ GO
 
 
 
--- 4) Creacion de stored procedure para crear una nota de credito
+-- 3) Creacion de stored procedure para crear una nota de credito
 CREATE OR ALTER PROCEDURE INV.crearNotaCredito
     @nroFactura INT,
     @idProducto INT,
@@ -178,7 +138,7 @@ GO
 
 
 
--- 5) Creacion del login, usuario y rol para el supervisor
+-- 4) Creacion del login, usuario y rol para el supervisor
 -- Creamos el login para el supervisor
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'UsuarioSupervisor')
 BEGIN
